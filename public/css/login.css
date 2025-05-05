@@ -1,0 +1,49 @@
+header {
+    background-color: #4a4a4a;
+    padding: 10px;
+    border: 3px solid #29b6c5;
+    border-radius: 5px;
+}
+
+.header-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 20px;
+    box-shadow: 0px 8px 15px #333;
+}
+.top_logo{
+    position: absolute;
+}
+.logo {
+    height: 40px;
+    border-radius: 5px;
+}
+
+.login-text {
+    color: #bdbdbd;
+    font-size: 18px;
+    z-index: 1000000;
+    
+}
+.login-text:hover{
+    cursor: pointer;
+    color: #ffffff;
+}
+.ip-address {
+    color: #ffffff;
+    font-size: 14px;
+}
+
+.login_form{
+    /* display: none; */
+
+    border: 2px solid #29b6c5;
+    border-radius: 5px;
+   box-shadow: 0px 8px 15px #333;
+}
+.form-control:focus{
+    background-color: #29b6c5;
+    color: #ffffff;
+}
