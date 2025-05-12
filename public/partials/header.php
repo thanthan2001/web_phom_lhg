@@ -2,8 +2,8 @@
     header {
         position: fixed;
         top: 0;
-        left: 250px;
-        width: calc(100% - 250px);
+        left: 260px;
+        width: calc(100% - 260px);
         height: 50px;
         background-color: white;
         display: flex;
@@ -12,13 +12,18 @@
         padding: 0 20px;
         border-bottom: 4px solid #083b5b;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        z-index: 1000;
+        z-index: 900;
         transition: left 0.3s ease, width 0.3s ease;
     }
 
-    .sidebar.collapsed ~ header {
-        left: 100px;
-        width: calc(100% - 100px);
+    .sidebar~header {
+        left: 260px;
+        width: calc(100% - 260px);
+    }
+
+    .sidebar.collapsed~header {
+        left: 80px;
+        width: calc(100% - 80px);
     }
 
     .user-section {
@@ -111,6 +116,15 @@
 
     .btn-login:hover {
         background-color: #147ca4;
+    }
+
+    body.sidebar-collapsed header {
+        width: calc(100% - 80px);
+        left: 80px;
+    }
+
+    body.sidebar-collapsed .content {
+        margin-left: 80px;
     }
 </style>
 

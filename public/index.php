@@ -27,11 +27,15 @@ $user = $_SESSION['user'] ?? null;
     <div class="wrapper">
         <?php include_once '../public/partials/sidebar.php' ?>
         <div class="content">
-            <div class="dashboard-header">
+            <div class="main-header">
                 <div>
                     <?php include_once '../public/partials/header.php' ?>
                 </div>
             </div>
+            <div class="main-content">
+                <h1>Welcome to the Phom System</h1>
+                <p>This is the home page content.</p>
+            </div>    
 
         </div>
     </div>
@@ -39,6 +43,7 @@ $user = $_SESSION['user'] ?? null;
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             sidebar.classList.toggle('collapsed');
+            document.body.classList.toggle('sidebar-collapsed');
         }
     </script>
 </body>
