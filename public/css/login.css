@@ -47,3 +47,36 @@ header {
     background-color: #29b6c5;
     color: #ffffff;
 }
+
+.modal-content {
+    transition: all 0.3s ease;
+    background: #fefefe;
+    border-radius: 1rem;
+  }
+  
+  .modal-title {
+    font-size: 1.5rem;
+  }
+  
+  .form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+  }
+
+  @keyframes slideDownSmooth {
+    0% {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .toast-slide-down {
+    animation: slideDownSmooth 0.8s ease-out;
+    transition: opacity 0.5s ease-in-out;
+  }
+  
+  
