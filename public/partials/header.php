@@ -4,7 +4,7 @@
         top: 0;
         left: 260px;
         width: calc(100% - 260px);
-        height: 50px;
+        height: 70px;
         background-color: white;
         display: flex;
         justify-content: flex-end;

@@ -58,7 +58,7 @@
 
   .sidebar a.active {
     background-color: #1e40af;
-    border-left: 4px solid #38bdf8;
+    border-left: 4px solid #53EDF5;
     color: white;
     font-weight: 500;
   }
@@ -72,7 +72,7 @@
   }
 
   .toggle-btn {
-    background-color: #2563eb;
+    background-color: #53EDF5;
     border: none;
     color: white;
     position: absolute;
@@ -99,6 +99,10 @@
   .sidebar.collapsed ~ .content {
     margin-left: 80px;
   }
+
+  .sidebar i {
+    font-size: 24px;
+}
 </style>
 
 <div class="sidebar" id="sidebar">

@@ -4,7 +4,7 @@ include '../configs/api.php';
 $msg = '';
 $success = false;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_form'])) {
     $payload = [
         'userID' => $_POST['iduser'],
         'pwd' => $_POST['password'],
@@ -38,19 +38,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </div>
 
       <div class="modal-body">
-      <?php if (!empty($msg)): ?>
-<div class="position-fixed top-0 start-50 translate-middle-x p-3 toast-slide-down" style="z-index: 9999;">
-  <div id="loginToast" class="toast align-items-center text-white <?= $success ? 'bg-success' : 'bg-danger' ?> border-0 shadow-lg show" role="alert" aria-live="assertive" aria-atomic="true">
-    <div class="d-flex">
-      <div class="toast-body fw-bold">
-        <?= htmlspecialchars($msg) ?>
-      </div>
-      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Đóng"></button>
-    </div>
-  </div>
-</div>
-<?php endif; ?>
+        <?php if (!empty($msg)): ?>
+          <div class="position-fixed top-0 start-50 translate-middle-x p-3 toast-slide-down" style="z-index: 9999;">
+            <div id="loginToast" class="toast align-items-center text-white <?= $success ? 'bg-success' : 'bg-danger' ?> border-0 shadow-lg show" role="alert" aria-live="assertive" aria-atomic="true">
+              <div class="d-flex">
+                <div class="toast-body fw-bold">
+                  <?= htmlspecialchars($msg) ?>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Đóng"></button>
+              </div>
+            </div>
+          </div>
+        <?php endif; ?>
 
+        <!-- ✅ Hidden field để xác định đây là form đăng nhập -->
+        <input type="hidden" name="login_form" value="1">
 
         <div class="form-floating mb-3">
           <input type="text" class="form-control rounded-3" id="iduser" name="iduser" placeholder="Tên đăng nhập" required>
@@ -93,4 +95,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   });
 </script>
 <?php endif; ?>
-

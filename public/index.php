@@ -32,7 +32,7 @@ $user = $_SESSION['user'] ?? null;
                     <?php include_once '../public/partials/header.php' ?>
                 </div>
             </div>
-            <div class="main-content">
+            <div class="main-content" style="padding-top: 60px;">
                 <h1>Welcome to the Phom System</h1>
                 <p>This is the home page content.</p>
             </div>    
