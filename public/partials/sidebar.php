@@ -111,15 +111,19 @@
   </button>
   <div class="logo"><i class="fas fa-shoe-prints"></i><span>Phom System</span></div>
   <ul>
-    <li><a href="index.php"><i class="fas fa-home"></i> <span>Trang chủ</span></a></li>
-    <li><a href="register_lend.php"><i class="fas fa-file-signature"></i> <span>Đăng ký mượn</span></a></li>
-    <li><a href="trans_form.php"><i class="fas fa-exchange-alt"></i> <span>Chuyển đổi phom</span></a></li>
+    <li><a href="index.php" data-page="Trang chủ"><i class="fas fa-home"></i> <span>Trang chủ</span></a></li>
+    <li><a href="lend_manage.php" data-page="Quản lý đơn mượn"><i class="fas fa-folder-open"></i> <span>Quản lý đơn mượn</span></a></li>
+    <li><a href="create_lend.php" data-page="Tạo đơn mượn"><i class="fas fa-file-signature"></i> <span>Tạo đơn mượn</span></a></li>
   </ul>
 </div>
 
 <script>
+  const sidebar = document.getElementById('sidebar');
+  
   function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('collapsed');
+    sidebar.classList.toggle('collapsed');
+    document.body.classList.toggle('sidebar-collapsed');
+    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
   }
 
   function setActiveLink() {
@@ -128,11 +132,26 @@
     links.forEach(link => {
       if (link.getAttribute('href') === currentUrl) {
         link.classList.add('active');
+        localStorage.setItem('currentPageTitle', link.getAttribute('data-page'));
       } else {
         link.classList.remove('active');
       }
     });
   }
 
-  window.addEventListener('DOMContentLoaded', setActiveLink);
+  window.addEventListener('DOMContentLoaded', () => {
+    if (localStorage.getItem('sidebarCollapsed') === null) {
+      localStorage.setItem('sidebarCollapsed', 'true');
+    }
+
+    if (localStorage.getItem('sidebarCollapsed') === 'true') {
+      sidebar.classList.add('collapsed');
+      document.body.classList.add('sidebar-collapsed');
+    } else {
+      sidebar.classList.remove('collapsed');
+      document.body.classList.remove('sidebar-collapsed');
+    }
+    
+    setActiveLink();
+  })
 </script>

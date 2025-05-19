@@ -68,8 +68,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_form'])) {
           <select class="form-select rounded-3" id="companyName" name="companyName" required>
             <option value="">-- Chọn công ty --</option>
             <option value="lhg">LHG</option>
-            <option value="abc">ABC</option>
-            <option value="xyz">XYZ</option>
+            <option value="lyv">LYV</option>
+            <option value="lvl">LVL</option>
+            <option value="jaz">JAZ</option>
+            <option value="jzs">JZS</option>
+            <option value="lym">LYM</option>
           </select>
           <label for="companyName">Công ty</label>
         </div>
