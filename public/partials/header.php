@@ -165,7 +165,7 @@
 </style>
 
 <header>
-    <div style="flex-grow: 1; font-weight: bold; font-size: 20px; color: #083b5b;" id="page-title"></div>
+    <div style="flex-grow: 1; font-weight: bold; font-size: 24px; color: #083b5b;" id="page-title"></div>
 
     <div class="user-section">
         <?php if (isset($_SESSION['user'])): ?>
@@ -214,6 +214,14 @@
             document.getElementById('page-title').innerText = pageTitle;
         }
     });
+
+    // document.querySelectorAll('form button[name="language"]').forEach(button => {
+    //     button.addEventListener('click', () => {
+    //         const sidebar = document.getElementById('sidebar');
+    //         const isCollapsed = sidebar.classList.contains('collapsed');
+    //         localStorage.setItem('sidebarCollapsed', isCollapsed);
+    //     });
+    // });
 
     function toggleLanguageDropdown() {
         const menu = document.getElementById('language-menu');

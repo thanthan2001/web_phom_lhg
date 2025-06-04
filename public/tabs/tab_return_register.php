@@ -1,104 +1,56 @@
-<div class="scan-controls mb-2">
-    <div class="search-box">
-        <input type="text" placeholder="Nhập để tìm kiếm...">
-        <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-search"></i></button>
-    </div>
-</div>
-
 <?php
-$totalItems = 16;
-$itemsPerPage = 3;
+session_start();
+require_once "../../configs/api.php";
 
-$currentPage = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-$startIndex = ($currentPage - 1) * $itemsPerPage;
-$totalPages = ceil($totalItems / $itemsPerPage);
+$companyName = $_SESSION['user']['companyName'] ?? null;
 
-ob_start();
-for ($i = $startIndex; $i < min($startIndex + $itemsPerPage, $totalItems); $i++):
-?>
-    <div class="lend-card">
-        <div class="info-grid">
-            <div><strong>Số thẻ:</strong> 456<?= $i ?></div>
-            <div><strong>Tên người trả:</strong> Trần Thị <?= chr(65 + $i % 26) ?></div>
-            <div><strong>Đơn vị:</strong> JHGSG</div>
-            <div><strong>Liên:</strong> ASSNHN</div>
-        </div>
+if (!$companyName) {
+    echo "<div class='alert alert-danger'>Bạn cần đăng nhập để xem thông tin.</div>";
+    exit;
+}
 
-        <div class="info-grid">
-            <div><strong>Ngày trả:</strong> 16/05/2025</div>
-            <div><strong>Ngày nhận trả:</strong> 16/05/2025</div>
-            <div><strong>Cán bộ xác nhận:</strong> Trần Văn C</div>
-        </div>
+$responseJson = callAPI('getAllReturnBill', ['companyName' => $companyName]);
+$response = json_decode($responseJson, true);
 
-        <div class="info-grid">
-            <div><strong>Mã vật tư:</strong> RTNSHJK</div>
-            <div><strong>Tổng số lượng :</strong> 15</div>
-        </div>
+if ($response['status'] !== 'Success') {
+    echo "<div class='alert alert-warning'>Không có dữ liệu đơn trả.</div>";
+    exit;
+}
 
-        <table class="lend-table">
-            <thead>
-                <tr>
-                    <th>Mã vật tư</th>
-                    <th>Tên Phom</th>
-                    <th>Size</th>
-                    <th>Chất liệu</th>
-                    <th>Tồn kho</th>
-                    <th>Số lượng trả</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php for ($j = 0; $j < 5; $j++): ?>
-                    <tr>
-                        <td>MT<?= rand(100000, 999999) ?></td>
-                        <td>Phom <?= chr(65 + $j) ?></td>
-                        <td><?= rand(36, 42) ?></td>
-                        <td>Kim loại</td>
-                        <td><?= rand(50, 250) ?></td>
-                        <td><?= rand(2, 15) ?></td>
-                    </tr>
-                <?php endfor; ?>
-            </tbody>
-        </table>
-    </div>
-<?php endfor; ?>
+$data = $response['data'];
 
-<nav aria-label="Page navigation">
-  <ul class="pagination justify-content-center modern-pagination">
-    <!-- Nút quay lại -->
-    <li class="page-item <?= $currentPage <= 1 ? 'disabled' : '' ?>">
-      <a class="page-link return-page-link" href="#" data-page="<?= max(1, $currentPage - 1) ?>">&laquo;</a>
-    </li>
+usort($data, function ($a, $b) {
+    $a_confirm = $a['isConfirm'] ?? false;
+    $b_confirm = $b['isConfirm'] ?? false;
 
-    <?php
-    $totalPagesToShow = 5;
-    $half = floor($totalPagesToShow / 2);
-
-    $start = max(1, $currentPage - $half);
-    $end = min($totalPages, $currentPage + $half);
-
-    if ($start > 1) {
-        echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+    // Ưu tiên đơn chưa duyệt
+    if ($a_confirm !== $b_confirm) {
+        return $a_confirm - $b_confirm;
     }
 
-    for ($page = $start; $page <= $end; $page++) {
-        $activeClass = $page == $currentPage ? 'active' : '';
-        echo '<li class="page-item ' . $activeClass . '">';
-        echo '<a class="page-link return-page-link" href="#" data-page="' . $page . '">' . $page . '</a>';
-        echo '</li>';
-    }
+    return strtotime($b['ReturnRequestDate']) - strtotime($a['ReturnRequestDate']);
+});
 
-    if ($end < $totalPages) {
-        echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-    }
+foreach ($data as $item):
+    $status = $item['isConfirm'] ? "Đã xác nhận" : "Chưa xác nhận";
+    $statusColor = $item['isConfirm'] ? "#14AE5C" : "#d9534f";
+    $backgroundColor = $item['isConfirm'] ? "#d4edda" : "#F5CFCF";
     ?>
+    <div class="lend-card return-card" style="background-color: <?= $backgroundColor ?>; border: 1px solid <?= $statusColor ?>;"
+        data-content="<?= strtolower($item['ID_Return'] . ' ' . $item['ID_BILL'] . ' ' . $item['BorrowerName'] . ' ' . $item['DepName']) ?>">
 
-    <!-- Nút tới -->
-    <li class="page-item <?= $currentPage >= $totalPages ? 'disabled' : '' ?>">
-      <a class="page-link return-page-link" href="#" data-page="<?= min($totalPages, $currentPage + 1) ?>">&raquo;</a>
-    </li>
-  </ul>
-</nav>
+        <div class="info-grid">
+            <div><strong>Mã trả:</strong> <?= htmlspecialchars($item['ID_Return']) ?></div>
+            <div><strong>Mã mượn:</strong> <?= htmlspecialchars($item['ID_BILL']) ?></div>
+            <div><strong>Người mượn:</strong> <?= htmlspecialchars($item['BorrowerName']) ?></div>
+            <div><strong>Đơn vị:</strong> <?= htmlspecialchars($item['DepName']) ?></div>
+            <div><strong>Số lượng trả:</strong> <?= htmlspecialchars($item['totalQuantityReturn']) ?></div>
+        </div>
 
-<?php
-echo ob_get_clean();
-?>
+        <div class="info-grid">
+            <div><strong>Ngày yêu cầu:</strong> <?= date('d/m/Y', strtotime($item['ReturnRequestDate'])) ?></div>
+            <div><strong>Trạng thái:</strong> <?= $status ?></div>
+            <div><strong>Số RFID đã quét:</strong> <?= $item['TotalRFIDScanned'] ?></div>
+        </div>
+    </div>
+<?php endforeach; ?>

@@ -5,27 +5,37 @@ $msg = '';
 $success = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_form'])) {
-    $payload = [
-        'userID' => $_POST['iduser'],
-        'pwd' => $_POST['password'],
-        'companyName' => $_POST['companyName']
-    ];
+  $payload = [
+    'userID' => $_POST['iduser'],
+    'pwd' => $_POST['password'],
+    'companyName' => $_POST['companyName']
+  ];
 
-    try {
-        $response = callAPI('auth_login', $payload);
-        $result = json_decode($response, true);
+  try {
+    $response = callAPI('auth_login', $payload);
+    $result = json_decode($response, true);
 
-        if ($result['status'] == 200) {
-            $_SESSION['user'] = $result['data'];
-            $success = true;
-            $msg = "Chào mừng " . htmlspecialchars($result['data']['USERNAME']) . "!";
-            echo "<meta http-equiv='refresh' content='1.5;url=index.php'>";
-        } else {
-            $msg = $result['message'] ?? "Đăng nhập thất bại.";
-        }
-    } catch (Exception $e) {
-        $msg = "Lỗi kết nối: " . $e->getMessage();
+    if ($result['status'] == 200) {
+      $_SESSION['user'] = $result['data'];
+      $_SESSION['user']['companyName'] = $payload['companyName'];
+      $_SESSION['user']['userID'] = $payload['userID'];
+
+      $userID = $result['data']['USERID'];
+      $adminUserIDs = ['65563', '65557', '65558'];
+      $success = true;
+      $msg = "Chào mừng " . htmlspecialchars($result['data']['USERNAME']) . "!";
+      // echo "<meta http-equiv='refresh' content='1.5;url=index.php'>";
+      if (in_array($userID, $adminUserIDs)) {
+        echo "<meta http-equiv='refresh' content='1.5;url=index.php'>";
+      } else {
+        echo "<meta http-equiv='refresh' content='1.5;url=lend_register.php'>";
+      }
+    } else {
+      $msg = isset($result['message']) ? $result['message'] : "Đăng nhập thất bại.";
     }
+  } catch (Exception $e) {
+    $msg = "Lỗi kết nối: " . $e->getMessage();
+  }
 }
 ?>
 
@@ -55,8 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_form'])) {
         <input type="hidden" name="login_form" value="1">
 
         <div class="form-floating mb-3">
-          <input type="text" class="form-control rounded-3" id="iduser" name="iduser" placeholder="Tên đăng nhập" required>
-          <label for="iduser">Tên đăng nhập</label>
+          <input type="text" class="form-control rounded-3" id="iduser" name="iduser" placeholder="Số thẻ" required>
+          <label for="iduser">Số thẻ</label>
         </div>
 
         <div class="form-floating mb-3">
@@ -87,14 +97,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_form'])) {
 </div>
 
 <?php if (!empty($msg)): ?>
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
-    loginModal.show();
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+      loginModal.show();
 
-    const toastEl = document.getElementById('loginToast');
-    const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
-    toast.show();
-  });
-</script>
+      const toastEl = document.getElementById('loginToast');
+      const toast = new bootstrap.Toast(toastEl, {
+        delay: 4000
+      });
+      toast.show();
+    });
+  </script>
 <?php endif; ?>

@@ -105,15 +105,27 @@
 }
 </style>
 
+<?php
+$userID = isset($_SESSION['user']['USERID']) ? $_SESSION['user']['USERID'] : null;
+$adminUserIDs = ['65563', '65557', '65558']; // có quyền quản lý đơn mượn
+?>
+
 <div class="sidebar" id="sidebar">
   <button class="toggle-btn" onclick="toggleSidebar()">
     <i class="fas fa-angle-left"></i>
   </button>
   <div class="logo"><i class="fas fa-shoe-prints"></i><span>Phom System</span></div>
   <ul>
+    <?php if (in_array($userID, $adminUserIDs)): ?>
     <li><a href="index.php" data-page="Trang chủ"><i class="fas fa-home"></i> <span>Trang chủ</span></a></li>
-    <li><a href="lend_manage.php" data-page="Quản lý đơn mượn"><i class="fas fa-folder-open"></i> <span>Quản lý đơn mượn</span></a></li>
-    <li><a href="create_lend.php" data-page="Tạo đơn mượn"><i class="fas fa-file-signature"></i> <span>Tạo đơn mượn</span></a></li>
+    <li><a href="manage_borrow.php" data-page="Quản lý đơn mượn"><i class="fas fa-tasks"></i> <span>Quản lý đơn mượn</span></a></li>
+    <li><a href="manage_return.php" data-page="Quản lý đơn trả"><i class="fas fa-undo-alt"></i> <span>Quản lý đơn trả</span></a></li>
+    <li><a href="manage_phom.php" data-page="Quản lý phom"><i class="fas fa-shoe-prints"></i> <span>Quản lý phom</span></a></li>
+  <?php else: ?>
+    <li><a href="lend_register.php" data-page="Đăng ký mượn"><i class="fas fa-hand-holding"></i> <span>Đăng ký mượn</span></a></li>
+    <li><a href="history_register.php" data-page="Lịch sử mượn"><i class="fas fa-file-alt"></i> <span>Lịch sử mượn trả</span></a></li>
+    <!-- <li><a href="trans_form.php" data-page="Chuyển phom"><i class="fas fa-exchange-alt"></i> <span>Chuyển phom</span></a></li> -->
+  <?php endif; ?>
   </ul>
 </div>
 
@@ -140,18 +152,22 @@
   }
 
   window.addEventListener('DOMContentLoaded', () => {
-    if (localStorage.getItem('sidebarCollapsed') === null) {
-      localStorage.setItem('sidebarCollapsed', 'true');
+    const sidebarCollapsed = localStorage.getItem('sidebarCollapsed');
+
+    // Nếu chưa có giá trị, mặc định collapsed là true (tức sidebar đóng)
+    if (sidebarCollapsed === null) {
+        localStorage.setItem('sidebarCollapsed', 'true');
+        document.getElementById('sidebar').classList.add('collapsed');
+        document.body.classList.add('sidebar-collapsed');
+    } else if (sidebarCollapsed === 'true') {
+        document.getElementById('sidebar').classList.add('collapsed');
+        document.body.classList.add('sidebar-collapsed');
+    } else {
+        document.getElementById('sidebar').classList.remove('collapsed');
+        document.body.classList.remove('sidebar-collapsed');
     }
 
-    if (localStorage.getItem('sidebarCollapsed') === 'true') {
-      sidebar.classList.add('collapsed');
-      document.body.classList.add('sidebar-collapsed');
-    } else {
-      sidebar.classList.remove('collapsed');
-      document.body.classList.remove('sidebar-collapsed');
-    }
-    
-    setActiveLink();
-  })
+    setActiveLink(); // vẫn giữ lại highlight menu
+});
+
 </script>

@@ -2,7 +2,7 @@
 include "session_start.php";
 include_once __DIR__ . '/modals/login_modal.php';
 
-$user = $_SESSION['user'] ?? null;
+$user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
 ?>
 
 
