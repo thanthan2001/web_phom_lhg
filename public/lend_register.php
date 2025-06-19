@@ -69,7 +69,7 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
     .table .form-control,
     .input-group .form-control,
     .input-group .form-select {
-        background-color: transparent !important;
+        background-color: transparent;
     }
 
     .table .form-control {
@@ -125,6 +125,48 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
         margin-top: 0.25rem;
         padding-left: 0.5rem;
     }
+
+    /* Mã dạng phom */
+    .table th:nth-child(2),
+    .table td:nth-child(2) {
+        width: 12%;
+    }
+
+    /* Tên Phom */
+    .table th:nth-child(3),
+    .table td:nth-child(3) {
+        width: 18%;
+    }
+
+    /* Loại */
+    .table th:nth-child(4),
+    .table td:nth-child(4) {
+        width: 12%;
+    }
+
+    /* Chất liệu */
+    .table th:nth-child(5),
+    .table td:nth-child(5) {
+        width: 12%;
+    }
+
+    /* Size */
+    .table th:nth-child(6),
+    .table td:nth-child(6) {
+        width: 12%;
+    }
+
+    /* Tồn kho */
+    .table th:nth-child(7),
+    .table td:nth-child(7) {
+        width: 12%;
+    }
+
+    /* Số lượng đăng ký */
+    .table th:nth-child(8),
+    .table td:nth-child(8) {
+        width: 12%;
+    }
 </style>
 
 <body>
@@ -150,7 +192,7 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
                             <div class="col-md-3">
                                 <div class="input-group">
                                     <span class="input-group-text"><strong>Tên người mượn:</strong></span>
-                                    <input type="text" class="form-control" name="borrowerName" id="borrowerName">
+                                    <input type="text" class="form-control" name="borrowerName" id="borrowerName" readonly>
                                 </div>
                             </div>
                             <div class="col-md-3">
@@ -217,9 +259,10 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
                                     <tr>
                                         <th class="d-none">Mã vật tư</th>
                                         <th>Mã dạng phom</th>
-                                        <th>Size</th>
+                                        <th>Tên Phom</th>
                                         <th>Loại</th>
                                         <th>Chất liệu</th>
+                                        <th>Size</th>
                                         <th>Tồn kho</th>
                                         <th>Số lượng đăng ký</th>
                                     </tr>
@@ -230,7 +273,7 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
                         </div>
 
                         <div class="d-flex justify-content-end mt-4">
-                            <button type="submit" class="btn btn-primary px-4" id="submitBtn">Đăng ký mượn</button>
+                            <button type="button" class="btn btn-primary px-4" id="submitBtn">Đăng ký mượn</button>
                         </div>
                 </form>
 
@@ -319,19 +362,24 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
                         });
 
                         sorted.forEach(item => {
+                            const fullName = item.LastName.trim();
+                            const splitIndex = fullName.indexOf('(');
+                            const maDangPhom = splitIndex !== -1 ? fullName.substring(0, splitIndex).trim() : fullName;
+
                             const tr = document.createElement('tr');
                             tr.innerHTML = `
-                    <td class="d-none">${item.LastMatNo}</td>
-                    <td>${item.LastName.trim()}</td>
-                    <td>${item.LastSize.trim()}</td>
-                    <td>${item.LastType.trim()}</td>
-                    <td>${item.Material.trim()}</td>
-                    <td>${(item.SoLuongTonKho ?? '').toString().trim()}</td>
-                    <td><input type="number" name="quantity[]" class="form-control text-center quantity-input" value="0" min="0"></td>
-                `;
+                                <td class="d-none">${item.LastMatNo}</td>
+                                <td>${maDangPhom}</td>
+                                <td>${item.LastName.trim()}</td>
+                                <td>${item.LastType.trim()}</td>
+                                <td>${item.Material.trim()}</td>
+                                <td>${item.LastSize.trim()}</td>
+                                <td>${(item.SoLuongTonKho ?? '').toString().trim()}</td>
+                                <td><input type="number" name="quantity[]" class="form-control text-center quantity-input" value="0" min="0"></td>
+                            `;
                             tbody.appendChild(tr);
                         });
-
+                        addQuantityInputEvents();
                         updateTotalQuantity();
                     } else {
                         alert(data.message || "Không tìm thấy dữ liệu phom.");
@@ -345,13 +393,28 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
                 });
         });
 
+        function addQuantityInputEvents() {
+            document.querySelectorAll('.quantity-input').forEach(input => {
+                input.addEventListener('input', function() {
+                    const value = parseInt(this.value, 10);
+                    if (value > 0) {
+                        this.style.backgroundColor = '#EEF594FF',
+                            this.style.color = 'red';;
+                    } else {
+                        this.style.backgroundColor = '';
+                        this.style.color = '';
+                    }
+                });
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const cardNumberInput = document.getElementById('cardNumber');
             const borrowerNameInput = document.getElementById('borrowerName');
 
             cardNumberInput.addEventListener('blur', function() {
                 const userID = cardNumberInput.value.trim();
-                const companyName = <?= json_encode($_SESSION['user']['companyName']) ?>;
+                const companyName = <?= isset($_SESSION['user']['companyName']) ? json_encode($_SESSION['user']['companyName']) : 'null' ?>;
 
                 if (!userID) {
                     borrowerNameInput.value = '';
@@ -409,7 +472,7 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
 
         confirmOfficerInput.addEventListener('blur', function() {
             const officerID = confirmOfficerInput.value.trim();
-            const companyName = <?= json_encode($_SESSION['user']['companyName']) ?>;
+            const companyName = <?= isset($_SESSION['user']['companyName']) ? json_encode($_SESSION['user']['companyName']) : 'null' ?>;
 
             if (!officerID) {
                 confirmOfficerNameInput.value = '';
@@ -498,12 +561,11 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
                     if (data.status === 'Success' && data.data?.jsonArray?.length > 0) {
                         allDepartments = data.data.jsonArray;
                     } else {
-                        alert("Không thể tải danh sách đơn vị.");
+                        console.error("Không tìm thấy dữ liệu đơn vị.");
                     }
                 })
                 .catch(err => {
                     console.error(err);
-                    alert("Lỗi khi tải danh sách đơn vị.");
                 });
 
             const input = document.getElementById('unitSelect');
@@ -546,12 +608,21 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
 
 
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('borrowForm').addEventListener('submit', handleFormSubmit);
+            document.getElementById('submitBtn').addEventListener('click', handleFormSubmit);
         });
 
+        const currentUser = <?php echo json_encode($user); ?>;
+
         function handleFormSubmit(e) {
-            e.preventDefault();
             console.log("Submit event triggered.");
+            console.log("Current user:", currentUser);
+
+            if (!currentUser) {
+                alert('Vui lòng đăng nhập để đăng ký mượn!');
+                const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                loginModal.show();
+                return;
+            }
 
             const formData = getFormData();
             console.log("Form data:", formData);
@@ -698,15 +769,17 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
             const details = [];
 
             rows.forEach(row => {
-                const [matNo, name, sizeCell] = row.cells;
+                const cells = row.cells;
+                const matNo = cells[0]?.textContent.trim(); 
+                const name = cells[2]?.textContent.trim(); 
+                const size = cells[5]?.textContent.trim(); 
                 const quantityInput = row.querySelector('.quantity-input');
-                const size = sizeCell.textContent.trim();
                 const quantity = parseInt(quantityInput?.value || 0, 10);
 
                 if (quantity > 0) {
                     details.push({
-                        LastMatNo: matNo.textContent.trim(),
-                        LastName: name.textContent.trim(),
+                        LastMatNo: matNo,
+                        LastName: name,
                         LastSize: size,
                         LastSum: quantity
                     });
@@ -715,6 +788,7 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
 
             return details;
         }
+
 
         function convertToDateTime(dateStr, timeStr = '00:00:00') {
             const [d, m, y] = dateStr.split('/');

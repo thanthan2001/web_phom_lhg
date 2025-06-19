@@ -69,7 +69,7 @@ $data = isset($response["data"]) ? $response["data"] : [];
                             <div class="filter-section">
                                 <div class="row align-items-end">
                                     <div class="col-md-4 mb-3">
-                                        <label for="filterType" class="form-label">Chọn loại lọc:</label>
+                                        <!-- <label for="filterType" class="form-label">Chọn loại lọc:</label> -->
                                         <select class="form-select" id="filterType">
                                             <option value="all">Tất cả</option>
                                             <option value="month">Tháng</option>
@@ -87,7 +87,7 @@ $data = isset($response["data"]) ? $response["data"] : [];
                     <div class="row g-4">
                         <div class="col-md-6">
                             <div class="card p-3">
-                                <h5 class="text-center">Tổng tồn kho / Đã mượn / Tổng nhập</h5>
+                                <h5 class="text-center">Tổng tồn kho / Đã mượn / Tổng SL</h5>
                                 <canvas id="chartInventory"></canvas>
                             </div>
                         </div>
@@ -174,15 +174,17 @@ $data = isset($response["data"]) ? $response["data"] : [];
             let totalInStock = 0,
                 totalBorrowed = 0,
                 totalReturned = 0;
+
             const byLastNo = {},
                 shelfPhomSizeMap = {},
                 sizeByLastNo = {},
                 allPhomSizeKeysSet = new Set();
 
             data.forEach(item => {
-                const inStock = parseInt(item.QtyInStock || 0);
-                const total = parseInt(item.TotalQty || 0);
-                const borrowed = total - inStock;
+                const pairs = parseInt(item.TotalPairs || 0); // dùng số đôi
+                const inStock = pairs;
+                const total = pairs; // giả sử TotalPairs là tổng nhập
+                const borrowed = 0; // nếu bạn có QtyBorrowedPairs thì thay vào đây
 
                 totalInStock += inStock;
                 totalBorrowed += borrowed;
@@ -192,17 +194,21 @@ $data = isset($response["data"]) ? $response["data"] : [];
                 const size = item.LastSize?.trim() || '';
                 const shelf = item.ShelfName?.trim() || '';
 
-                byLastNo[lastNo] = (byLastNo[lastNo] || 0) + inStock;
+                // Biểu đồ theo mã phom
+                byLastNo[lastNo] = (byLastNo[lastNo] || 0) + pairs;
 
+                // Biểu đồ theo kệ (Phom - Size)
                 const phomSizeKey = `${lastNo} - ${size}`;
                 if (!shelfPhomSizeMap[shelf]) shelfPhomSizeMap[shelf] = {};
-                shelfPhomSizeMap[shelf][phomSizeKey] = (shelfPhomSizeMap[shelf][phomSizeKey] || 0) + inStock;
+                shelfPhomSizeMap[shelf][phomSizeKey] = (shelfPhomSizeMap[shelf][phomSizeKey] || 0) + pairs;
                 allPhomSizeKeysSet.add(phomSizeKey);
 
+                // Biểu đồ theo size từng mã phom
                 if (!sizeByLastNo[lastNo]) sizeByLastNo[lastNo] = {};
-                sizeByLastNo[lastNo][size] = (sizeByLastNo[lastNo][size] || 0) + total;
+                sizeByLastNo[lastNo][size] = (sizeByLastNo[lastNo][size] || 0) + pairs;
             });
 
+            // Biểu đồ tổng tồn kho / đã mượn / tổng nhập
             new Chart('chartInventory', {
                 type: 'bar',
                 data: {
@@ -217,13 +223,14 @@ $data = isset($response["data"]) ? $response["data"] : [];
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Tổng tồn kho / Đã mượn / Tổng nhập'
+                            text: 'Tổng tồn kho / Đã mượn / Tổng SL (theo đôi)'
                         }
                     },
                     responsive: true
                 }
             });
 
+            // Biểu đồ theo mã phom
             new Chart('chartByLastNo', {
                 type: 'pie',
                 data: {
@@ -239,21 +246,31 @@ $data = isset($response["data"]) ? $response["data"] : [];
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Tồn kho theo mã phom'
+                            text: 'Tồn kho theo mã phom (số đôi)'
                         }
                     },
                     responsive: true
                 }
             });
 
+            // Biểu đồ theo kệ
             const allShelves = Object.keys(shelfPhomSizeMap);
             const allPhomSizeKeys = [...allPhomSizeKeysSet].sort();
-            const shelfDatasets = allPhomSizeKeys.map((key, i) => ({
-                label: key,
-                data: allShelves.map(shelf => shelfPhomSizeMap[shelf]?.[key] || 0),
-                backgroundColor: `hsl(${i * 360 / allPhomSizeKeys.length}, 70%, 60%)`,
-                stack: 'stack1'
-            }));
+            const allPhoms = [...new Set(allPhomSizeKeys.map(k => k.split(' - ')[0]))];
+            const phomColorMap = {};
+            allPhoms.forEach((phom, i) => {
+                phomColorMap[phom] = `hsl(${i * 360 / allPhoms.length}, 70%, 60%)`;
+            });
+
+            const shelfDatasets = allPhomSizeKeys.map(key => {
+                const phom = key.split(' - ')[0];
+                return {
+                    label: key,
+                    data: allShelves.map(shelf => shelfPhomSizeMap[shelf]?.[key] || 0),
+                    backgroundColor: phomColorMap[phom],
+                    stack: 'stack1'
+                };
+            });
 
             new Chart('chartByShelf', {
                 type: 'bar',
@@ -263,18 +280,12 @@ $data = isset($response["data"]) ? $response["data"] : [];
                 },
                 options: {
                     plugins: {
-                        title: {
-                            display: true,
-                            text: 'Tồn kho theo kệ (Phom - Size)'
-                        },
                         legend: {
-                            position: 'top',
-                            labels: {
-                                font: {
-                                    size: 10
-                                }
-                            }
-                        }
+                            display: false 
+                        },
+                        tooltip: {
+                            enabled: true 
+                        },
                     },
                     responsive: true,
                     scales: {
@@ -289,7 +300,7 @@ $data = isset($response["data"]) ? $response["data"] : [];
                             stacked: true,
                             title: {
                                 display: true,
-                                text: 'Số lượng'
+                                text: 'Số lượng (đôi)'
                             },
                             beginAtZero: true
                         }
@@ -297,6 +308,7 @@ $data = isset($response["data"]) ? $response["data"] : [];
                 }
             });
 
+            // Biểu đồ size theo mã phom
             const allSizes = [...new Set(Object.values(sizeByLastNo).flatMap(obj => Object.keys(obj)))].sort();
             const sizeDatasets = Object.entries(sizeByLastNo).map(([lastNo, sizes], i) => ({
                 label: lastNo,
@@ -314,7 +326,7 @@ $data = isset($response["data"]) ? $response["data"] : [];
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Thống kê size theo mã phom'
+                            text: 'Thống kê size theo mã phom (số đôi)'
                         },
                         legend: {
                             position: 'top'
@@ -331,7 +343,7 @@ $data = isset($response["data"]) ? $response["data"] : [];
                         y: {
                             title: {
                                 display: true,
-                                text: 'Số lượng'
+                                text: 'Số lượng (đôi)'
                             },
                             beginAtZero: true
                         }
