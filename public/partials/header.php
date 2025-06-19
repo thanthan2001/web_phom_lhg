@@ -183,7 +183,7 @@
             <button class="btn-login" data-bs-toggle="modal" data-bs-target="#loginModal">Đăng nhập</button>
         <?php endif; ?>
 
-        <div class="language-dropdown">
+        <!-- <div class="language-dropdown">
             <div class="language-toggle" onclick="toggleLanguageDropdown()">
                 <i class="fas fa-globe"></i>
             </div>
@@ -203,7 +203,7 @@
                     </button>
                 </form>
             </div>
-        </div>
+        </div> -->
     </div>
 </header>
 

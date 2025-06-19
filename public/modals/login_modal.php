@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_form'])) {
       $_SESSION['user']['userID'] = $payload['userID'];
 
       $userID = $result['data']['USERID'];
-      $adminUserIDs = ['65563', '65557', '65558'];
+      $adminUserIDs = ['65563', '65557', '65558', '07401'];
       $success = true;
       $msg = "Chào mừng " . htmlspecialchars($result['data']['USERNAME']) . "!";
       // echo "<meta http-equiv='refresh' content='1.5;url=index.php'>";

@@ -7,6 +7,11 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
 $companyName = isset($user['companyName']) ? $user['companyName'] : '';
 $response = json_decode(callAPI("layTatCaPhom", ["companyName" => $companyName]), true);
 $data = isset($response["data"]) ? $response["data"] : [];
+
+$totalPairsSum = 0;
+foreach ($data as $phom) {
+    $totalPairsSum += $phom['TotalPairs'];
+}
 ?>
 
 
@@ -95,12 +100,18 @@ $data = isset($response["data"]) ? $response["data"] : [];
                         <?= htmlspecialchars(isset($response["message"]) ? $response["message"] : "Không thể lấy dữ liệu.") ?>
                     </div>
                 <?php else: ?>
-                    <div class="search-box">
-                        <input type="text" id="searchInput" pclass="form-control" placeholder="Nhập để tìm kiếm..." aria-label="Search...">
-                        <button class="btn btn-sm btn-outline-secondary" onclick="handleSearchClick()">
-                            <i class="fas fa-search"></i>
-                        </button>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="search-box">
+                            <input type="text" id="searchInput" class="form-control" placeholder="Nhập để tìm kiếm..." aria-label="Search...">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="handleSearchClick()">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <div class="fw-bold">
+                            Tổng số đôi: <?= number_format($totalPairsSum) ?>
+                        </div>
                     </div>
+
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover table-custom-blue align-middle">
                             <thead class="">
@@ -129,7 +140,7 @@ $data = isset($response["data"]) ? $response["data"] : [];
                                         <td><?= htmlspecialchars($phom["ShelfName"]) ?></td>
                                         <td><?= $phom["QtyLeft"] ?></td>
                                         <td><?= $phom["QtyRight"] ?></td>
-                                        <td><?= $phom["TotalPairs"] ?></td>
+                                        <td><strong><?= $phom["TotalPairs"] ?></strong></td>
                                         <td><?= $phom["TotalQty"] ?></td>
                                         <td><?= $phom["QtyInStock"] ?></td>
                                     </tr>
