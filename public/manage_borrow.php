@@ -97,22 +97,32 @@ $companyName = isset($user['companyName']) ? $user['companyName'] : '';
 
         .lend-table th:nth-child(1),
         .lend-table td:nth-child(1) {
-            width: 25%;
+            width: 18%;
         }
 
         .lend-table th:nth-child(2),
         .lend-table td:nth-child(2) {
-            width: 25%;
+            width: 18%;
         }
 
         .lend-table th:nth-child(3),
         .lend-table td:nth-child(3) {
-            width: 25%;
+            width: 16%;
         }
 
         .lend-table th:nth-child(4),
         .lend-table td:nth-child(4) {
-            width: 25%;
+            width: 16%;
+        }
+
+        .lend-table th:nth-child(5),
+        .lend-table td:nth-child(5) {
+            width: 16%;
+        }
+
+        .lend-table th:nth-child(6),
+        .lend-table td:nth-child(6) {
+            width: 16%;
         }
 
 
@@ -321,7 +331,9 @@ $companyName = isset($user['companyName']) ? $user['companyName'] : '';
                                     <th>Mã dạng phom</th>
                                     <th>Tên Phom</th>
                                     <th>Size</th>
-                                    <th>Số lượng đăng ký</th>
+                                    <th>SL đăng ký</th>
+                                    <th>SL cho mượn</th>
+                                    <th>SL đã scan</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -333,6 +345,8 @@ $companyName = isset($user['companyName']) ? $user['companyName'] : '';
                                         <td><?= htmlspecialchars($detail['LastName']) ?></td>
                                         <td><?= trim($detail['LastSize']) ?></td>
                                         <td><?= intval($detail['LastSum']) ?></td>
+                                        <td><?= intval($detail['SoLuongChoMuon']) ?></td>
+                                        <td><?= intval($detail['TotalPairsScanned']) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -396,7 +410,7 @@ $companyName = isset($user['companyName']) ? $user['companyName'] : '';
 
                         const result = await res.json();
                         alert(result.status === 'Success' ? 'Duyệt đơn thành công!' : 'Duyệt đơn thất bại: ' + result.message);
-                        if (result.status === 'Success') location.reload(); 
+                        if (result.status === 'Success') location.reload();
                     } catch (error) {
                         console.error(error);
                         alert('Có lỗi xảy ra khi gửi yêu cầu.');
