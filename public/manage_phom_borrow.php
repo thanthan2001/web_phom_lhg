@@ -5,26 +5,7 @@ include_once __DIR__ . '/../configs/api.php';
 
 $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
 $companyName = isset($user['companyName']) ? $user['companyName'] : '';
-
-// Khởi tạo $response với giá trị mặc định để tránh lỗi "Undefined variable"
-$response = ["status" => "Error", "message" => "Không thể lấy dữ liệu từ API."];
-$apiResult = callAPI("layTatCaPhom", ["companyName" => $companyName]);
-
-// Kiểm tra kết quả trả về từ API trước khi giải mã JSON
-if ($apiResult !== false && $apiResult !== null) {
-    $decodedResponse = json_decode($apiResult, true);
-    // Kiểm tra xem việc giải mã JSON có thành công không
-    if (json_last_error() === JSON_ERROR_NONE) {
-        $response = $decodedResponse;
-    } else {
-        $response["message"] = "Dữ liệu trả về từ API không phải là JSON hợp lệ: " . json_last_error_msg();
-        error_log("Lỗi giải mã JSON: " . json_last_error_msg() . " - Kết quả API: " . $apiResult);
-    }
-} else {
-    $response["message"] = "Lỗi khi gọi API layTatCaPhom. Vui lòng kiểm tra kết nối hoặc đường dẫn API.";
-    error_log("Lỗi gọi API layTatCaPhom. Kết quả: " . var_export($apiResult, true));
-}
-
+$response = json_decode(callAPI("layTatCaPhom", ["companyName" => $companyName]), true);
 $data = isset($response["data"]) ? $response["data"] : [];
 
 $totalPairsSum = 0;
@@ -42,63 +23,69 @@ foreach ($data as $phom) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Phom</title>
+    <title>Manage Phom State</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
         integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
     <style>
-        .table-custom-blue thead {
-            background-color: #064569D5;
-            color: white;
-        }
 
-        .table-custom-blue tbody tr:hover {
-            background-color: #FFF9C4;
-            cursor: pointer;
-        }
-
-        .table-custom-blue tbody tr.selected {
-            background-color: #FFF176 !important;
-        }
-
-        .table-custom-blue th,
-        .table-custom-blue td {
-            vertical-align: middle;
-            text-align: center;
-            border: 0.5px solid #adb5bd !important;
-        }
-
-        .table-custom-blue {
-            border-collapse: collapse;
-        }
-
-        .search-box {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            padding-bottom: 10px;
-        }
-
-        .search-box input {
-            padding: 4px 10px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-            height: 36px;
-            width: 200px;
-        }
-
-        .search-box button {
-            height: 36px;
-            width: 36px;
-            background-color: #064469;
-            color: white;
-            border: none;
-            border-radius: 4px;
-        }
     </style>
 </head>
+
+<style>
+    .table-custom-blue thead {
+        background-color: #064569D5;
+        color: white;
+    }
+
+    .table-custom-blue tbody tr:hover {
+        background-color: #FFF9C4;
+        cursor: pointer;
+    }
+
+    .table-custom-blue tbody tr.selected {
+        background-color: #FFF176 !important;
+    }
+
+    .table-custom-blue th,
+    .table-custom-blue td {
+        vertical-align: middle;
+        text-align: center;
+        border: 0.5px solid #adb5bd !important;
+    }
+
+    .table-custom-blue {
+        border-collapse: collapse;
+    }
+
+    .search-box {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding-bottom: 10px;
+    }
+
+    .search-box input {
+        padding: 4px 10px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        height: 36px;
+        width: 200px;
+    }
+
+    .search-box button {
+        height: 36px;
+        width: 36px;
+        background-color: #064469;
+        color: white;
+        border: none;
+        border-radius: 4px;
+    }
+</style>
+
+
 
 <body>
     <div class="wrapper">
@@ -127,7 +114,7 @@ foreach ($data as $phom) {
                         </div>
                     </div>
 
-                    <div class="table-responsive" id="phomTableContainer">
+                    <div class="table-responsive">
                         <table class="table table-bordered table-hover table-custom-blue align-middle">
                             <thead class="">
                                 <tr>
@@ -163,6 +150,7 @@ foreach ($data as $phom) {
                                             <td><?= $phom["TotalPairs"] - $phom["QtyInStock"] ?></td>
                                         </tr>
                                     <?php endforeach; ?>
+                                    <!-- Dòng tổng kết -->
                                     <tr style="background-color: #AFECD1FF; font-weight: bold;">
                                         <td><?= htmlspecialchars($lastNo) ?></td>
                                         <td>Tất cả size</td>
@@ -195,28 +183,11 @@ foreach ($data as $phom) {
 
         document.addEventListener('DOMContentLoaded', function() {
             const rows = document.querySelectorAll('.table-custom-blue tbody tr');
-            const phomTableContainer = document.getElementById('phomTableContainer'); // Lấy phần tử chứa bảng
-
             rows.forEach(row => {
-                // Thêm một lớp để phân biệt dòng tổng kết
-                if (row.style.backgroundColor === 'rgb(175, 236, 209)') {
-                    row.classList.add('summary-row');
-                }
-
-                row.addEventListener('click', (event) => {
-                    event.stopPropagation(); 
-                    if (!row.classList.contains('summary-row')) {
-                        rows.forEach(r => r.classList.remove('selected'));
-                        row.classList.add('selected');
-                    }
-                });
-            });
-
-            // Lắng nghe sự kiện click 
-            document.addEventListener('click', (event) => {
-                if (!phomTableContainer.contains(event.target)) {
+                row.addEventListener('click', () => {
                     rows.forEach(r => r.classList.remove('selected'));
-                }
+                    row.classList.add('selected');
+                });
             });
         });
 
@@ -236,16 +207,12 @@ foreach ($data as $phom) {
             let matchCount = 0;
 
             rows.forEach(row => {
-                if (row.id === 'noResultsRow') {
-                    return; 
-                }
+                if (row.id === 'noResultsRow') return;
 
                 const maPhom = row.cells[0].textContent.trim().toLowerCase();
                 const matched = maPhom.includes(filter);
                 row.style.display = matched ? '' : 'none';
-                if (matched) {
-                    matchCount++;
-                }
+                if (matched) matchCount++;
             });
 
             noResultsRow.style.display = matchCount === 0 ? '' : 'none';

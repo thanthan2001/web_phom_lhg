@@ -223,18 +223,18 @@
     //     });
     // });
 
-    function toggleLanguageDropdown() {
-        const menu = document.getElementById('language-menu');
-        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-    }
+    // function toggleLanguageDropdown() {
+    //     const menu = document.getElementById('language-menu');
+    //     menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    // }
 
-    // Tự động đóng khi click ra ngoài
-    window.addEventListener('click', function(e) {
-        const dropdown = document.querySelector('.language-dropdown');
-        if (!dropdown.contains(e.target)) {
-            document.getElementById('language-menu').style.display = 'none';
-        }
-    });
+    // // Tự động đóng khi click ra ngoài
+    // window.addEventListener('click', function(e) {
+    //     const dropdown = document.querySelector('.language-dropdown');
+    //     if (!dropdown.contains(e.target)) {
+    //         document.getElementById('language-menu').style.display = 'none';
+    //     }
+    // });
 
     document.querySelector('.btn-login')?.addEventListener('click', () => {
         document.getElementById('language-menu').style.display = 'none';

@@ -107,7 +107,7 @@
 
 <?php
 $userID = isset($_SESSION['user']['USERID']) ? $_SESSION['user']['USERID'] : null;
-$adminUserIDs = ['65563', '65557', '65558']; // có quyền quản lý đơn mượn
+$adminUserIDs = include '../configs/admins.php';
 ?>
 
 <div class="sidebar" id="sidebar">
