@@ -15,7 +15,7 @@ $data = isset($response["data"]) ? $response["data"] : [];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home</title>
+    <title>Thống kê kho</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
@@ -63,18 +63,16 @@ $data = isset($response["data"]) ? $response["data"] : [];
             </div>
             <div class="main-content" style="padding-top: 70px;">
                 <div class="container-fluid">
-                    <!-- Bộ lọc -->
                     <div class="row mb-4">
                         <div class="col-md-12">
                             <div class="filter-section">
                                 <div class="row align-items-end">
                                     <div class="col-md-4 mb-3">
-                                        <!-- <label for="filterType" class="form-label">Chọn loại lọc:</label> -->
                                         <select class="form-select" id="filterType">
                                             <option value="all">Tất cả</option>
-                                            <option value="month">Tháng</option>
-                                            <option value="quarter">Quý</option>
-                                            <option value="year">Năm</option>
+                                            <option value="month">Theo tháng</option>
+                                            <option value="quarter">Theo quý</option>
+                                            <option value="year">Theo năm</option>
                                         </select>
                                     </div>
                                     <div class="col-md-4 mb-3" id="filterValueContainer"></div>
@@ -83,11 +81,10 @@ $data = isset($response["data"]) ? $response["data"] : [];
                         </div>
                     </div>
 
-                    <!-- Biểu đồ -->
                     <div class="row g-4">
                         <div class="col-md-6">
                             <div class="card p-3">
-                                <h5 class="text-center">Tổng tồn kho / Đã mượn / Tổng SL</h5>
+                                <h5 class="text-center">Tổng tồn kho / Tổng đã mượn / Tổng nhập</h5>
                                 <canvas id="chartInventory"></canvas>
                             </div>
                         </div>
@@ -99,14 +96,14 @@ $data = isset($response["data"]) ? $response["data"] : [];
                         </div>
                         <div class="col-md-6">
                             <div class="card p-3">
-                                <h5 class="text-center">Tồn kho theo kệ (Phom - Size)</h5>
-                                <canvas id="chartByShelf"></canvas>
+                                <h5 class="text-center">Thống kê đã mượn theo mã phom và size</h5>
+                                <canvas id="chartByBorrowedPhomSize"></canvas>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="card p-3">
                                 <h5 class="text-center">Thống kê size theo mã phom</h5>
-                                <canvas id="chartByDateIn"></canvas>
+                                <canvas id="chartBySizeByLastNo"></canvas>
                             </div>
                         </div>
                     </div>
@@ -118,6 +115,16 @@ $data = isset($response["data"]) ? $response["data"] : [];
     <script>
         const phomData = <?php echo json_encode($data); ?>;
 
+        // Định nghĩa các mảng màu dễ nhìn hơn, sử dụng các tông màu sáng và đa dạng
+        const vibrantColors1 = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#E7E9ED']; // Đỏ, Xanh dương, Vàng, Xanh ngọc, Tím, Cam...
+        const vibrantColors2 = ['#4BC0C0', '#FFCE56', '#FF6384', '#36A2EB', '#C9CBCF', '#9966FF', '#FF9F40', '#E7E9ED']; // Xanh ngọc, Vàng, Đỏ, Xanh dương...
+        const vibrantColors3 = ['#36A2EB', '#FFCE56', '#FF6384', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#E7E9ED']; // Xanh dương, Vàng, Đỏ, Xanh ngọc...
+        const vibrantColors4 = ['#FFCE56', '#FF6384', '#36A2EB', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#E7E9ED']; // Vàng, Đỏ, Xanh dương, Xanh ngọc...
+
+        function getChartColors(colorSet, index) {
+            return colorSet[index % colorSet.length];
+        }
+
         function updateFilterOptions() {
             const filterType = document.getElementById("filterType").value;
             const container = document.getElementById("filterValueContainer");
@@ -128,7 +135,8 @@ $data = isset($response["data"]) ? $response["data"] : [];
                 select.className = 'form-select';
                 select.id = 'filterValue';
                 for (let m = 1; m <= 12; m++) {
-                    select.innerHTML += `<option value="${m}">Tháng ${m}</option>`;
+                    const monthText = m < 10 ? `0${m}` : `${m}`;
+                    select.innerHTML += `<option value="${m}">Tháng ${monthText}</option>`;
                 }
                 container.appendChild(select);
             } else if (filterType === 'quarter') {
@@ -143,10 +151,14 @@ $data = isset($response["data"]) ? $response["data"] : [];
                 const select = document.createElement('select');
                 select.className = 'form-select';
                 select.id = 'filterValue';
-                const years = Array.from(new Set(phomData.map(item => new Date(item.DateIn).getFullYear()))).sort();
+                const years = Array.from(new Set(phomData.map(item => new Date(item.DateIn).getFullYear()))).sort((a, b) => b - a);
                 years.forEach(year => {
                     select.innerHTML += `<option value="${year}">${year}</option>`;
                 });
+                const currentYear = new Date().getFullYear();
+                if (years.includes(currentYear)) {
+                    select.value = currentYear;
+                }
                 container.appendChild(select);
             }
         }
@@ -154,7 +166,7 @@ $data = isset($response["data"]) ? $response["data"] : [];
         function filterData() {
             const type = document.getElementById('filterType').value;
             const valueEl = document.getElementById('filterValue');
-            if (!valueEl || type === 'all') return phomData;
+            if (type === 'all' || !valueEl) return phomData;
 
             const value = valueEl.value;
             return phomData.filter(item => {
@@ -171,168 +183,145 @@ $data = isset($response["data"]) ? $response["data"] : [];
                 instance.destroy();
             });
 
-            let totalInStock = 0,
-                totalBorrowed = 0,
-                totalReturned = 0;
-
-            const byLastNo = {},
-                shelfPhomSizeMap = {},
-                sizeByLastNo = {},
-                allPhomSizeKeysSet = new Set();
+            let totalInStock = 0;
+            let totalPairsEntered = 0;
+            const byLastNo = {};
+            const borrowedByPhomSize = {};
+            const sizeByLastNo = {};
+            const allSizesSet = new Set();
 
             data.forEach(item => {
-                const pairs = parseInt(item.TotalPairs || 0); // dùng số đôi
-                const inStock = pairs;
-                const total = pairs; // giả sử TotalPairs là tổng nhập
-                const borrowed = 0; // nếu bạn có QtyBorrowedPairs thì thay vào đây
+                const pairsInStock = parseInt(item.QtyInStock || 0);
+                const totalPairsForEntry = parseInt(item.TotalPairs || 0);
 
-                totalInStock += inStock;
-                totalBorrowed += borrowed;
-                totalReturned += total;
+                totalInStock += pairsInStock;
+                totalPairsEntered += totalPairsForEntry;
 
-                const lastNo = item.LastNo?.trim() || '';
-                const size = item.LastSize?.trim() || '';
-                const shelf = item.ShelfName?.trim() || '';
+                const lastNo = item.LastNo?.trim() || 'Không xác định';
+                const size = item.LastSize?.trim() || 'Không xác định';
 
-                // Biểu đồ theo mã phom
-                byLastNo[lastNo] = (byLastNo[lastNo] || 0) + pairs;
+                byLastNo[lastNo] = (byLastNo[lastNo] || 0) + pairsInStock;
 
-                // Biểu đồ theo kệ (Phom - Size)
-                const phomSizeKey = `${lastNo} - ${size}`;
-                if (!shelfPhomSizeMap[shelf]) shelfPhomSizeMap[shelf] = {};
-                shelfPhomSizeMap[shelf][phomSizeKey] = (shelfPhomSizeMap[shelf][phomSizeKey] || 0) + pairs;
-                allPhomSizeKeysSet.add(phomSizeKey);
+                const borrowedForEntry = totalPairsForEntry - pairsInStock;
+                if (!borrowedByPhomSize[lastNo]) {
+                    borrowedByPhomSize[lastNo] = {};
+                }
+                borrowedByPhomSize[lastNo][size] = (borrowedByPhomSize[lastNo][size] || 0) + borrowedForEntry;
+                allSizesSet.add(size);
 
-                // Biểu đồ theo size từng mã phom
                 if (!sizeByLastNo[lastNo]) sizeByLastNo[lastNo] = {};
-                sizeByLastNo[lastNo][size] = (sizeByLastNo[lastNo][size] || 0) + pairs;
+                sizeByLastNo[lastNo][size] = (sizeByLastNo[lastNo][size] || 0) + pairsInStock;
             });
 
-            // Biểu đồ tổng tồn kho / đã mượn / tổng nhập
+            const totalBorrowed = totalPairsEntered - totalInStock;
+
+
+            // Chart 1: Tổng tồn kho / Tổng đã mượn / Tổng nhập
             new Chart('chartInventory', {
                 type: 'bar',
                 data: {
-                    labels: ['Tồn kho', 'Đã mượn', 'Tổng'],
+                    labels: ['Tổng tồn kho', 'Tổng đã mượn', 'Tổng nhập kho'],
                     datasets: [{
                         label: 'Số lượng (đôi)',
-                        data: [totalInStock, totalBorrowed, totalReturned],
-                        backgroundColor: ['#36a2eb', '#ff6384', '#4bc0c0'],
+                        data: [totalInStock, totalBorrowed, totalPairsEntered],
+                        backgroundColor: ['#3498DB', '#E74C3C', '#2ECC71'], // Xanh dương, Đỏ, Xanh lá cây
                     }]
                 },
                 options: {
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Tổng tồn kho / Đã mượn / Tổng SL (theo đôi)'
-                        }
-                    },
-                    responsive: true
-                }
-            });
-
-            // Biểu đồ theo mã phom
-            new Chart('chartByLastNo', {
-                type: 'pie',
-                data: {
-                    labels: Object.keys(byLastNo),
-                    datasets: [{
-                        data: Object.values(byLastNo),
-                        backgroundColor: Object.keys(byLastNo).map((_, i) =>
-                            `hsl(${i * 360 / Object.keys(byLastNo).length}, 70%, 60%)`
-                        )
-                    }]
-                },
-                options: {
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Tồn kho theo mã phom (số đôi)'
-                        }
-                    },
-                    responsive: true
-                }
-            });
-
-            // Biểu đồ theo kệ
-            const allShelves = Object.keys(shelfPhomSizeMap);
-            const allPhomSizeKeys = [...allPhomSizeKeysSet].sort();
-            const allPhoms = [...new Set(allPhomSizeKeys.map(k => k.split(' - ')[0]))];
-            const phomColorMap = {};
-            allPhoms.forEach((phom, i) => {
-                phomColorMap[phom] = `hsl(${i * 360 / allPhoms.length}, 70%, 60%)`;
-            });
-
-            const shelfDatasets = allPhomSizeKeys.map(key => {
-                const phom = key.split(' - ')[0];
-                return {
-                    label: key,
-                    data: allShelves.map(shelf => shelfPhomSizeMap[shelf]?.[key] || 0),
-                    backgroundColor: phomColorMap[phom],
-                    stack: 'stack1'
-                };
-            });
-
-            new Chart('chartByShelf', {
-                type: 'bar',
-                data: {
-                    labels: allShelves,
-                    datasets: shelfDatasets
-                },
-                options: {
-                    plugins: {
-                        legend: {
-                            display: false 
-                        },
-                        tooltip: {
-                            enabled: true 
-                        },
-                    },
                     responsive: true,
-                    scales: {
-                        x: {
-                            stacked: true,
-                            title: {
-                                display: true,
-                                text: 'Tên kệ'
-                            }
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Tổng tồn kho / Tổng đã mượn / Tổng nhập kho (theo đôi)'
                         },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
                         y: {
-                            stacked: true,
+                            beginAtZero: true,
                             title: {
                                 display: true,
                                 text: 'Số lượng (đôi)'
-                            },
-                            beginAtZero: true
+                            }
                         }
                     }
                 }
             });
 
-            // Biểu đồ size theo mã phom
-            const allSizes = [...new Set(Object.values(sizeByLastNo).flatMap(obj => Object.keys(obj)))].sort();
-            const sizeDatasets = Object.entries(sizeByLastNo).map(([lastNo, sizes], i) => ({
-                label: lastNo,
-                data: allSizes.map(size => sizes[size] || 0),
-                backgroundColor: `hsl(${i * 360 / Object.keys(sizeByLastNo).length}, 60%, 60%)`
-            }));
-
-            new Chart('chartByDateIn', {
-                type: 'bar',
+            // Chart 2: Tồn kho theo mã phom (Pie Chart)
+            const labelsByLastNo = Object.keys(byLastNo);
+            const dataByLastNo = Object.values(byLastNo);
+            new Chart('chartByLastNo', {
+                type: 'pie',
                 data: {
-                    labels: allSizes,
-                    datasets: sizeDatasets
+                    labels: labelsByLastNo,
+                    datasets: [{
+                        data: dataByLastNo,
+                        backgroundColor: labelsByLastNo.map((_, i) => getChartColors(vibrantColors1, i))
+                    }]
                 },
                 options: {
+                    responsive: true,
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Thống kê size theo mã phom (số đôi)'
+                            text: 'Tồn kho theo mã phom (số đôi)'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + ' đôi (' + (context.parsed / dataByLastNo.reduce((a, b) => a + b, 0) * 100).toFixed(1) + '%)';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // --- Thống kê đã mượn theo mã phom và size (Grouped Bar Chart) ---
+            const allSizesSorted = [...allSizesSet].sort((a, b) => {
+                const numA = parseFloat(a);
+                const numB = parseFloat(b);
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return numA - numB;
+                }
+                return a.localeCompare(b);
+            });
+
+            const borrowedSizeDatasets = Object.entries(borrowedByPhomSize).map(([lastNo, sizes], i) => {
+                return {
+                    label: lastNo,
+                    data: allSizesSorted.map(size => sizes[size] || 0),
+                    backgroundColor: getChartColors(vibrantColors2, i),
+                };
+            });
+
+            new Chart('chartByBorrowedPhomSize', {
+                type: 'bar',
+                data: {
+                    labels: allSizesSorted,
+                    datasets: borrowedSizeDatasets
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Thống kê đã mượn theo mã phom và size (số đôi)'
                         },
                         legend: {
                             position: 'top'
                         }
                     },
-                    responsive: true,
                     scales: {
                         x: {
                             title: {
@@ -341,11 +330,55 @@ $data = isset($response["data"]) ? $response["data"] : [];
                             }
                         },
                         y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Số lượng đã mượn (đôi)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Chart 4: Thống kê tồn kho theo mã phom và size (Grouped Bar Chart)
+            const stockSizeDatasets = Object.entries(sizeByLastNo).map(([lastNo, sizes], i) => {
+                return {
+                    label: lastNo,
+                    data: allSizesSorted.map(size => sizes[size] || 0),
+                    backgroundColor: getChartColors(vibrantColors3, i),
+                };
+            });
+
+            new Chart('chartBySizeByLastNo', {
+                type: 'bar',
+                data: {
+                    labels: allSizesSorted,
+                    datasets: stockSizeDatasets
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Thống kê tồn kho theo mã phom và size (số đôi)'
+                        },
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Size'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
                             title: {
                                 display: true,
                                 text: 'Số lượng (đôi)'
-                            },
-                            beginAtZero: true
+                            }
                         }
                     }
                 }
@@ -363,7 +396,7 @@ $data = isset($response["data"]) ? $response["data"] : [];
                 setTimeout(() => {
                     const filtered = filterData();
                     renderCharts(filtered);
-                }, 10);
+                }, 50);
             }
         });
     </script>

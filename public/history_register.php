@@ -1,10 +1,9 @@
 <?php
-session_start();
+include "session_start.php";
 include_once __DIR__ . '/modals/login_modal.php';
 require_once "../configs/api.php";
 
 $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
-
 $companyName = isset($_SESSION['user']['companyName']) ? $_SESSION['user']['companyName'] : null;
 $Userid = isset($_SESSION['user']['userID']) ? $_SESSION['user']['userID'] : null;
 
@@ -17,25 +16,66 @@ $response = json_decode($responseJson, true);
 $bills = [];
 if ($response['status'] === 'Success') {
     foreach ($response['data'] as $item) {
-        $bills[$item['ID_bill']]['meta'] = $item;
-        $bills[$item['ID_bill']]['details'][] = $item;
+        $billId = $item['ID_bill'];
+
+        // Initialize bill data if not exists
+        if (!isset($bills[$billId])) {
+            $bills[$billId] = [
+                'meta' => [
+                    'ID_bill' => $billId,
+                    'Userid' => $item['Userid'],
+                    'BorrowerName' => $item['BorrowerName'],
+                    'DepName' => $item['DepName'],
+                    'OfficerId' => $item['OfficerId'],
+                    'OfficerName' => $item['OfficerName'],
+                    'isConfirm' => $item['isConfirm'],
+                    'StateLastBill' => $item['StateLastBill'],
+                    'ToTalPhomNotBinding' => (float)$item['ToTalPhomNotBinding'],
+                    'DateBorrow' => $item['DateBorrow'],
+                    'DateReceive' => $item['DateReceive'],
+                ],
+                'details' => []
+            ];
+        }
+
+        // Update DateBorrow (earliest date)
+        if (strtotime($item['DateBorrow']) < strtotime($bills[$billId]['meta']['DateBorrow'])) {
+            $bills[$billId]['meta']['DateBorrow'] = $item['DateBorrow'];
+        }
+
+        // Update DateReceive (latest date)
+        if (strtotime($item['DateReceive']) > strtotime($bills[$billId]['meta']['DateReceive'])) {
+            $bills[$billId]['meta']['DateReceive'] = $item['DateReceive'];
+        }
+
+        $bills[$billId]['details'][] = $item;
     }
 
-    $bills = array_values($bills);
-
+    // Sort bills based on isConfirm and DateBorrow
     usort($bills, function ($a, $b) {
         $a_confirm = !empty($a['meta']['isConfirm']);
         $b_confirm = !empty($b['meta']['isConfirm']);
 
+        // Prioritize unconfirmed bills (if the confirm button was active, it would show unconfirmed first)
         if ($a_confirm !== $b_confirm) {
             return $a_confirm - $b_confirm;
         }
 
+        // Sort by DateBorrow in descending order
         $a_date = strtotime($a['meta']['DateBorrow']);
         $b_date = strtotime($b['meta']['DateBorrow']);
 
         return $b_date - $a_date;
     });
+}
+
+function formatQuantity($quantity)
+{
+    if (fmod($quantity, 1) !== 0.0) {
+        return number_format($quantity, 1);
+    } else {
+        return number_format($quantity, 0);
+    }
 }
 ?>
 
@@ -44,7 +84,7 @@ if ($response['status'] === 'Success') {
 
 <head>
     <meta charset="UTF-8">
-    <title>Return Register</title>
+    <title>History Register</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -83,23 +123,19 @@ if ($response['status'] === 'Success') {
     }
 
     .lend-table th:nth-child(1),
-    .lend-table td:nth-child(1) {
-        width: 25%;
-    }
-
+    .lend-table td:nth-child(1),
     .lend-table th:nth-child(2),
     .lend-table td:nth-child(2) {
         width: 25%;
     }
 
     .lend-table th:nth-child(3),
-    .lend-table td:nth-child(3) {
-        width: 25%;
-    }
-
+    .lend-table td:nth-child(3),
     .lend-table th:nth-child(4),
-    .lend-table td:nth-child(4) {
-        width: 25%;
+    .lend-table td:nth-child(4),
+    .lend-table th:nth-child(5),
+    .lend-table td:nth-child(5) {
+        width: 20%;
     }
 
 
@@ -157,7 +193,7 @@ if ($response['status'] === 'Success') {
         right: 10px;
         border: none;
         background: transparent;
-        color: green;
+        color: gray;
         font-size: 16px;
         cursor: pointer;
         display: flex;
@@ -166,13 +202,13 @@ if ($response['status'] === 'Success') {
         gap: 5px;
         padding: 5px 10px;
         font-weight: 500;
-        background-color: #e9ffe9;
+        background-color: transparent;
         border-radius: 5px;
     }
 
     .confirm-btn[disabled] {
         background-color: transparent;
-        color: gray;
+        color: blue;
         cursor: default;
         font-weight: normal;
     }
@@ -189,12 +225,23 @@ if ($response['status'] === 'Success') {
                 <div class="container-fluid">
                     <div class="search-box">
                         <input type="text" id="searchInput" placeholder="Nhập để tìm kiếm...">
+                        <input type="date" id="dateInput">
                         <button class="btn btn-sm btn-outline-secondary" onclick="filterCards()">
                             <i class="fas fa-search"></i>
                         </button>
                     </div>
 
-                    <?php foreach ($bills as $billId => $group): ?>
+                    <div id="no-result-message" style="display: none; text-align: center; color: red; margin-top: 10px;">
+                        Không tìm thấy đơn đăng ký phù hợp.
+                    </div>
+
+                    <?php if (empty($bills)): ?>
+                        <div class="alert alert-info text-center mt-4">
+                            <i class="fas fa-box-open"></i> Chưa có đơn đăng ký.
+                        </div>
+                    <?php endif; ?>
+
+                    <?php foreach ($bills as $group): ?>
                         <?php
                         $meta = $group['meta'];
                         $details = $group['details'];
@@ -204,25 +251,25 @@ if ($response['status'] === 'Success') {
                             $backgroundColor = '#f3e5f5';
                             $statusText = 'Đã mượn';
                         } elseif (!empty($meta['isConfirm'])) {
-                            // Đã duyệt 
+                            // Đã duyệt
                             $borderColor = '#16a085';
                             $backgroundColor = '#d1f2eb';
                             $statusText = 'Đã duyệt';
                         } else {
-                            // Chưa duyệt 
+                            // Chưa duyệt
                             $borderColor = '#e67e22';
                             $backgroundColor = '#fdebd0';
                             $statusText = 'Chưa duyệt';
                         }
                         $cardStyle = "background-color: $backgroundColor; border: 1px solid $borderColor;";
                         ?>
-                        <div class="lend-card" style="<?= $cardStyle ?>">
+                        <div class="lend-card" style="<?= $cardStyle ?>" data-content="<?= htmlspecialchars(strtolower($meta['ID_bill'] . ' ' . $meta['Userid'] . ' ' . (isset($meta['BorrowerName']) ? $meta['BorrowerName'] : '---') . ' ' . (isset($meta['DepName']) ? $meta['DepName'] : '---') . ' ' . (isset($meta['OfficerId']) ? $meta['OfficerId'] : '---') . ' ' . (isset($meta['OfficerName']) ? $meta['OfficerName'] : '---') . ' ' . date('d/m/Y', strtotime($meta['DateBorrow'])) . ' ' . date('d/m/Y', strtotime($meta['DateReceive'])))) ?>">
                             <button
                                 class="confirm-btn"
                                 data-bill-id="<?= $meta['ID_bill'] ?>"
-                                <?= $meta['isConfirm'] ? 'disabled title="Đã duyệt"' : 'title="Chưa duyệt"' ?>>
+                                <?= $meta['isConfirm'] ? 'disabled title="Đã duyệt"' : 'title="Chờ duyệt"' ?>>
                                 <i class="fas fa-check-circle"></i>
-                                <?= $meta['isConfirm'] ? 'Đã duyệt' : 'Chưa duyệt' ?>
+                                <?= $meta['isConfirm'] ? 'Đã duyệt' : 'Chờ duyệt' ?>
                             </button>
                             <div class="info-grid">
                                 <div><strong>Mã đơn:</strong> <?= htmlspecialchars($meta['ID_bill']) ?></div>
@@ -242,10 +289,20 @@ if ($response['status'] === 'Success') {
                             </div>
 
                             <div class="info-grid">
-                                <div><strong>Tổng SL:</strong>
+                                <div><strong>Tổng SL đăng ký:</strong>
                                     <?= array_sum(array_map(function ($item) {
                                         return intval($item['LastSum']);
                                     }, $details)) ?>
+                                </div>
+                                <?php
+                                $totalScanned = array_sum(array_column($details, 'TotalPairsScanned'));
+                                $totalBorrowed = (float)$meta['ToTalPhomNotBinding'] + $totalScanned;
+                                ?>
+                                <div><strong>Tổng SL cho mượn:</strong>
+                                    <?= formatQuantity($totalBorrowed) ?>
+                                </div>
+                                <div><strong>SL ghi chú:</strong>
+                                    <?= formatQuantity($meta['ToTalPhomNotBinding']) ?>
                                 </div>
                                 <?php
                                 $isScanned = $meta['StateLastBill'];
@@ -263,22 +320,22 @@ if ($response['status'] === 'Success') {
                             <table class="lend-table">
                                 <thead>
                                     <tr>
-                                        <th style="display: none;">Mã vật tư</th>
                                         <th>Mã dạng phom</th>
                                         <th>Tên Phom</th>
                                         <th>Size</th>
                                         <th>Số lượng đăng ký</th>
+                                        <th>Đã quét</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($details as $detail): ?>
-                                        <?php $maDangPhom = explode('(', $detail['LastName']); ?>
+                                        <?php $maDangPhom = explode('(', $detail['LastName'])[0]; ?>
                                         <tr>
-                                            <td style="display: none;"><?= htmlspecialchars($detail['LastMatNo']) ?></td>
-                                            <td><?= htmlspecialchars(trim($maDangPhom[0])) ?></td>
+                                            <td><?= htmlspecialchars(trim($maDangPhom)) ?></td>
                                             <td><?= htmlspecialchars($detail['LastName']) ?></td>
                                             <td><?= trim($detail['LastSize']) ?></td>
                                             <td><?= intval($detail['LastSum']) ?></td>
+                                            <td><?= intval($detail['TotalPairsScanned']) ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -298,25 +355,63 @@ if ($response['status'] === 'Success') {
             localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
         }
 
-        const searchInput = document.getElementById("searchInput");
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const dateInput = document.getElementById('dateInput');
+            const noResultMessage = document.getElementById('no-result-message');
 
-    searchInput.addEventListener("input", filterCards);
+            function filterCards() {
+                const keyword = searchInput.value.trim().toLowerCase();
+                const dateValue = dateInput.value; // format YYYY-MM-DD
+                let visibleCount = 0;
 
-    searchInput.addEventListener("keyup", function(e) {
-        if (e.key === "Enter") {
-            filterCards(); 
-        }
-    });
+                const cards = document.querySelectorAll('.lend-card');
+                cards.forEach(card => {
+                    const content = card.getAttribute('data-content');
+                    let match = true;
 
-    function filterCards() {
-        const keyword = searchInput.value.toLowerCase().trim();
-        const cards = document.querySelectorAll(".lend-card");
+                    if (keyword && !content.includes(keyword)) {
+                        match = false;
+                    }
 
-        cards.forEach(card => {
-            const text = card.innerText.toLowerCase();
-            card.style.display = text.includes(keyword) ? "" : "none";
+                    if (dateValue) {
+                        // Extract the DateBorrow from the data-content attribute
+                        const dateBorrowMatch = content.match(/(\d{2}\/\d{2}\/\d{4})/);
+                        if (dateBorrowMatch) {
+                            const borrowDateStr = dateBorrowMatch[1]; // "dd/mm/yyyy"
+                            const [day, month, year] = borrowDateStr.split('/');
+                            const borrowDate = new Date(`${year}-${month}-${day}`); // Convert to YYYY-MM-DD for comparison
+
+                            const selectedDate = new Date(dateValue);
+
+                            // Compare dates by converting them to YYYY-MM-DD strings to avoid time issues
+                            const borrowDateFormatted = borrowDate.toISOString().slice(0, 10);
+                            const selectedDateFormatted = selectedDate.toISOString().slice(0, 10);
+
+                            if (borrowDateFormatted !== selectedDateFormatted) {
+                                match = false;
+                            }
+                        } else {
+                            // If no date is found in content, don't match if date filter is active
+                            match = false;
+                        }
+                    }
+
+                    card.style.display = match ? '' : 'none';
+                    if (match) visibleCount++;
+                });
+
+                noResultMessage.style.display = visibleCount === 0 ? 'block' : 'none';
+            }
+
+            searchInput.addEventListener('input', filterCards);
+            dateInput.addEventListener('change', filterCards);
+            dateInput.addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') {
+                    filterCards();
+                }
+            });
         });
-    }
     </script>
 </body>
 

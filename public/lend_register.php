@@ -167,6 +167,30 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
     .table td:nth-child(8) {
         width: 12%;
     }
+
+    .input-group .add-item-code-btn,
+    .input-group .remove-item-code-btn {
+        border-left: 1px solid #ced4da;
+        border-radius: 0 0.375rem 0.375rem 0;
+    }
+
+    .input-group .add-item-code-btn:focus,
+    .input-group .remove-item-code-btn:focus {
+        box-shadow: none;
+    }
+
+    .phom-table-section {
+        border: 1px solid #dee2e6;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 0.375rem;
+        background-color: #f8f9fa;
+    }
+
+    .phom-table-section h5 {
+        margin-bottom: 15px;
+        color: #0d6efd;
+    }
 </style>
 
 <body>
@@ -181,7 +205,6 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
             <div class="main-content" style="padding-top: 60px;">
                 <form id="borrowForm" method="POST" action="submit_borrow.php">
                     <div class="container-fluid">
-                        <!-- Dòng 1 -->
                         <div class="row mb-3">
                             <div class="col-md-3">
                                 <div class="input-group">
@@ -204,7 +227,6 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
                             </div>
                         </div>
 
-                        <!-- Dòng 2 -->
                         <div class="row mb-3">
                             <div class="col-md-3">
                                 <div class="input-group">
@@ -220,7 +242,6 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
                             </div>
                         </div>
 
-                        <!-- Dòng 3 -->
                         <div class="row mb-3">
                             <div class="col-md-3">
                                 <div class="input-group">
@@ -234,16 +255,7 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
                                     <input type="text" class="form-control" name="expectedDate" id="expectedDate">
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Dòng 4 -->
-                        <div class="row mb-3">
-                            <div class="col-md-3">
-                                <div class="input-group">
-                                    <span class="input-group-text"><strong>Mã dạng phom:</strong></span>
-                                    <input type="text" class="form-control" name="itemCode" id="mainItemCode">
-                                </div>
-                            </div>
                             <div class="col-md-3">
                                 <div class="input-group">
                                     <span class="input-group-text"><strong>Tổng SL:</strong></span>
@@ -252,25 +264,21 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
                             </div>
                         </div>
 
-                        <!-- Bảng -->
-                        <div class="table-responsive mt-4">
-                            <table class="table table-bordered text-center align-middle">
-                                <thead style="background-color: #bde0f6;">
-                                    <tr>
-                                        <th class="d-none">Mã vật tư</th>
-                                        <th>Mã dạng phom</th>
-                                        <th>Tên Phom</th>
-                                        <th>Loại</th>
-                                        <th>Chất liệu</th>
-                                        <th>Size</th>
-                                        <th>Tồn kho</th>
-                                        <th>Số lượng đăng ký</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="phomTableBody">
-                                </tbody>
-                            </table>
+                        <div id="itemCodeInputsContainer" class="mt-3">
+                            <div class="row mb-2 item-code-entry align-items-center">
+                                <div class="col-md-3">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><strong>Mã dạng phom:</strong></span>
+                                        <input type="text" class="form-control item-code-input" data-item-index="0" placeholder="">
+                                        <button type="button" class="btn btn-outline-secondary add-item-code-btn" title="Thêm mã dạng phom">+</button>
+                                        <button type="button" class="btn btn-outline-danger remove-item-code-btn" title="Xóa mã dạng phom" style="display:none;">-</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+
+                        <div id="phomTablesContainer" class="mt-4">
+                            </div>
 
                         <div class="d-flex justify-content-end mt-4">
                             <button type="button" class="btn btn-primary px-4" id="submitBtn">Đăng ký mượn</button>
@@ -282,600 +290,527 @@ $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
 
         </div>
     </div>
-    <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('collapsed');
-            document.body.classList.toggle('sidebar-collapsed');
-            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
-        }
 
-        function toggleSubmitButton() {
-            const details = getBorrowDetails();
-            document.getElementById('submitBtn').disabled = details.length === 0;
-        }
+</body>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- 1. Lấy các phần tử DOM một lần và lưu vào biến ---
+    const dom = {
+        sidebar: document.getElementById('sidebar'),
+        submitBtn: document.getElementById('submitBtn'),
+        // Thay đổi để quản lý nhiều mã dạng phom
+        itemCodeInputsContainer: document.getElementById('itemCodeInputsContainer'),
+        phomTablesContainer: document.getElementById('phomTablesContainer'),
+        mainTotalQuantity: document.getElementById('mainTotalQuantity'),
+        cardNumber: document.getElementById('cardNumber'),
+        borrowerName: document.getElementById('borrowerName'),
+        unitSelect: document.getElementById('unitSelect'),
+        unitDropdown: document.getElementById('unitDropdown'),
+        confirmOfficer: document.getElementById('confirmOfficer'),
+        confirmOfficerName: document.getElementById('confirmOfficerName'),
+        borrowDate: document.querySelector('input[name="borrowDate"]'),
+        expectedDate: document.querySelector('input[name="expectedDate"]'),
+        loginModal: new bootstrap.Modal(document.getElementById('loginModal')),
+    };
 
-        window.addEventListener('DOMContentLoaded', (event) => {
-            const today = new Date();
-            const yyyy = today.getFullYear();
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const dd = String(today.getDate()).padStart(2, '0');
-            const formattedDate = `${yyyy}-${mm}-${dd}`;
+    // --- 2. Dữ liệu từ PHP và trạng thái của ứng dụng ---
+    const appState = {
+        allDepartments: [],
+        currentUser: <?php echo isset($user) ? json_encode($user) : 'null'; ?>,
+        companyName: <?= isset($_SESSION['user']['companyName']) ? json_encode($_SESSION['user']['companyName']) : 'null' ?>,
+        itemCodeData: {}, // Lưu trữ dữ liệu phom theo từng mã dạng phom (key là itemIndex)
+        nextItemIndex: 1, // Để tạo index duy nhất cho mỗi mã dạng phom được thêm
+    };
 
-            document.querySelector('input[name="borrowDate"]').value = formattedDate;
-            document.querySelector('input[name="expectedDate"]').value = formattedDate;
-        });
-
-        window.addEventListener('DOMContentLoaded', (event) => {
-            const today = new Date();
-            const yyyy = today.getFullYear();
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const dd = String(today.getDate()).padStart(2, '0');
-            const formattedDate = `${dd}/${mm}/${yyyy}`;
-
-            document.querySelector('input[name="borrowDate"]').value = formattedDate;
-            document.querySelector('input[name="expectedDate"]').value = formattedDate;
-
-            flatpickr("input[name='expectedDate']", {
-                dateFormat: "d/m/Y",
-                defaultDate: "today",
-                disableMobile: true,
-                onDayCreate: function(dObj, dStr, fp, dayElem) {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const date = dayElem.dateObj;
-
-                    if (date < today) {
-                        dayElem.classList.add("flatpickr-disabled", "past-date");
-                        dayElem.removeAttribute("tabindex");
-                    }
-                }
+    // --- 3. Các hàm tiện ích (Helper Functions) ---
+    async function fetchAPI(url, options) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                ...options,
             });
-        });
-
-
-        document.getElementById('mainItemCode').addEventListener('blur', function(e) {
-            const matNo = e.target.value.trim();
-            if (!matNo) return;
-
-            fetch('fetch_phom_info.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        LastMatNo: matNo
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'Success' && data.data?.jsonArray?.length > 0) {
-                        const tbody = document.getElementById('phomTableBody');
-                        tbody.innerHTML = '';
-
-                        const sorted = data.data.jsonArray.sort((a, b) => {
-                            const sizeA = a.LastSize.trim().toUpperCase();
-                            const sizeB = b.LastSize.trim().toUpperCase();
-                            return sizeA.localeCompare(sizeB, undefined, {
-                                numeric: true
-                            });
-                        });
-
-                        sorted.forEach(item => {
-                            const fullName = item.LastName.trim();
-                            const splitIndex = fullName.indexOf('(');
-                            const maDangPhom = splitIndex !== -1 ? fullName.substring(0, splitIndex).trim() : fullName;
-
-                            const tr = document.createElement('tr');
-                            tr.innerHTML = `
-                                <td class="d-none">${item.LastMatNo}</td>
-                                <td>${maDangPhom}</td>
-                                <td>${item.LastName.trim()}</td>
-                                <td>${item.LastType.trim()}</td>
-                                <td>${item.Material.trim()}</td>
-                                <td>${item.LastSize.trim()}</td>
-                                <td>${(item.SoLuongTonKho ?? '').toString().trim()}</td>
-                                <td><input type="number" name="quantity[]" class="form-control text-center quantity-input" value="0" min="0"></td>
-                            `;
-                            tbody.appendChild(tr);
-                        });
-                        addQuantityInputEvents();
-                        updateTotalQuantity();
-                    } else {
-                        alert(data.message || "Không tìm thấy dữ liệu phom.");
-                        document.getElementById('phomTableBody').innerHTML = '';
-                        document.getElementById('mainTotalQuantity').value = 0;
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    alert("Có lỗi xảy ra khi gọi API.");
-                });
-        });
-
-        function addQuantityInputEvents() {
-            document.querySelectorAll('.quantity-input').forEach(input => {
-                input.addEventListener('input', function() {
-                    const value = parseInt(this.value, 10);
-                    if (value > 0) {
-                        this.style.backgroundColor = '#EEF594FF',
-                            this.style.color = 'red';;
-                    } else {
-                        this.style.backgroundColor = '';
-                        this.style.color = '';
-                    }
-                });
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const cardNumberInput = document.getElementById('cardNumber');
-            const borrowerNameInput = document.getElementById('borrowerName');
-
-            cardNumberInput.addEventListener('blur', function() {
-                const userID = cardNumberInput.value.trim();
-                const companyName = <?= isset($_SESSION['user']['companyName']) ? json_encode($_SESSION['user']['companyName']) : 'null' ?>;
-
-                if (!userID) {
-                    borrowerNameInput.value = '';
-                    borrowerNameInput.disabled = false;
-                    return;
-                }
-
-                fetch('get_user_info.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            userID,
-                            companyName
-                        })
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.status === 200 && data.data?.USERNAME) {
-                            borrowerNameInput.value = data.data.USERNAME;
-                            borrowerNameInput.disabled = true;
-
-
-                            const userDepName = data.data.DEPID;
-                            const matchedDep = allDepartments.find(dep => dep.DepName.trim() === userDepName.trim());
-                            const unitInput = document.getElementById('unitSelect');
-                            console.log("userDepID:", userDepName);
-
-                            if (matchedDep) {
-                                unitInput.value = matchedDep.DepName;
-                                unitInput.dataset.id = matchedDep.ID;
-                                unitInput.disabled = true;
-                            } else {
-                                unitInput.value = '';
-                                unitInput.disabled = false;
-                                alert('Không tìm thấy đơn vị của người dùng.');
-                            }
-
-                        } else {
-                            borrowerNameInput.value = '';
-                            borrowerNameInput.disabled = false;
-                            alert(data.message || 'Không tìm thấy người dùng.');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Lỗi lấy thông tin người dùng:', error);
-                        alert('Đã xảy ra lỗi khi lấy thông tin người dùng.');
-                    });
-            });
-        });
-
-        const confirmOfficerInput = document.getElementById('confirmOfficer');
-        const confirmOfficerNameInput = document.getElementById('confirmOfficerName');
-
-        confirmOfficerInput.addEventListener('blur', function() {
-            const officerID = confirmOfficerInput.value.trim();
-            const companyName = <?= isset($_SESSION['user']['companyName']) ? json_encode($_SESSION['user']['companyName']) : 'null' ?>;
-
-            if (!officerID) {
-                confirmOfficerNameInput.value = '';
-                confirmOfficerNameInput.disabled = false;
-                return;
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-
-            fetch('get_user_info.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        userID: officerID,
-                        companyName
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 200 && data.data?.USERNAME) {
-                        confirmOfficerNameInput.value = data.data.USERNAME.toString();
-                        console.log("Officer Name:", data.data.USERNAME);
-                        confirmOfficerNameInput.disabled = true;
-                    } else {
-                        confirmOfficerNameInput.value = '';
-                        confirmOfficerNameInput.disabled = false;
-                        alert(data.message || 'Không tìm thấy cán bộ.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Lỗi lấy thông tin cán bộ:', error);
-                    alert('Đã xảy ra lỗi khi lấy thông tin cán bộ.');
-                });
-        });
-
-
-        function updateTotalQuantity() {
-            const inputs = document.querySelectorAll('.quantity-input');
-            const total = Array.from(inputs).reduce((sum, input) => {
-                return sum + (parseInt(input.value) || 0);
-            }, 0);
-            document.getElementById('mainTotalQuantity').value = total;
+            return await response.json();
+        } catch (error) {
+            console.error(`Fetch error for ${url}:`, error);
+            alert(`Có lỗi xảy ra khi kết nối tới máy chủ. Vui lòng thử lại. Chi tiết: ${error.message}`);
+            throw error; 
         }
+    }
+    
+    function formatDate(date) {
+        const dd = String(date.getDate()).padStart(2, '0');
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const yyyy = date.getFullYear();
+        return `${dd}/${mm}/${yyyy}`;
+    }
 
-        document.addEventListener('input', function(e) {
-            if (e.target.classList.contains('quantity-input')) {
-                updateTotalQuantity();
-            }
-        });
+    function convertToDateTime(dateStr) {
+        const [d, m, y] = dateStr.split('/');
+        return `${y}-${m}-${d} 00:00:00`;
+    }
 
-        function showError(id, isValid, message) {
-            const input = document.getElementById(id);
-            if (!input) return;
+    function showError(inputElement, isValid, message = '') {
+        const inputGroup = inputElement.closest('.input-group');
+        if (!inputGroup) return;
 
-            const inputGroup = input.closest('.input-group');
-            let errorDiv = inputGroup.nextElementSibling;
-
-            // Tạo lỗi nếu chưa có
-            if ((!errorDiv || !errorDiv.classList.contains('invalid-feedback')) && !isValid) {
+        inputGroup.classList.toggle('is-invalid', !isValid);
+        let errorDiv = inputGroup.nextElementSibling;
+        
+        if (!isValid) {
+            if (!errorDiv || !errorDiv.classList.contains('invalid-feedback')) {
                 errorDiv = document.createElement('div');
                 errorDiv.className = 'invalid-feedback';
                 inputGroup.insertAdjacentElement('afterend', errorDiv);
             }
-
-            // Hiển thị hoặc ẩn lỗi
-            if (!isValid) {
-                inputGroup.classList.add('is-invalid');
-                if (errorDiv) errorDiv.textContent = message;
-            } else {
-                inputGroup.classList.remove('is-invalid');
-                if (errorDiv && errorDiv.classList.contains('invalid-feedback')) {
-                    errorDiv.remove();
-                }
+            errorDiv.textContent = message;
+        } else {
+            if (errorDiv && errorDiv.classList.contains('invalid-feedback')) {
+                errorDiv.remove();
             }
         }
+    }
 
+    // --- 4. Các hàm xử lý logic chính ---
 
-        let allDepartments = [];
+    function initializeDatepickers() {
+        const todayStr = formatDate(new Date());
+        dom.borrowDate.value = todayStr;
+        
+        flatpickr(dom.expectedDate, {
+            dateFormat: "d/m/Y",
+            defaultDate: "today",
+            disableMobile: true,
+            minDate: "today", 
+        });
+    }
+    
+    function toggleSidebar() {
+        const isCollapsed = dom.sidebar.classList.toggle('collapsed');
+        document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+        localStorage.setItem('sidebarCollapsed', isCollapsed);
+    }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            fetch('fetch_departments.php', {
-                    method: 'POST'
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'Success' && data.data?.jsonArray?.length > 0) {
-                        allDepartments = data.data.jsonArray;
-                    } else {
-                        console.error("Không tìm thấy dữ liệu đơn vị.");
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                });
+    function updateTotalQuantity() {
+        let total = 0;
+        dom.phomTablesContainer.querySelectorAll('.quantity-input').forEach(input => {
+            total += (parseInt(input.value, 10) || 0);
+        });
+        dom.mainTotalQuantity.value = total;
+        dom.submitBtn.disabled = getBorrowDetails().length === 0;
+    }
 
-            const input = document.getElementById('unitSelect');
-            const dropdown = document.getElementById('unitDropdown');
+    // Tạo một hàng mới cho bảng chi tiết phom
+    function createPhomTableRow(item, itemIndex) {
+        const fullName = item.LastName.trim();
+        const splitIndex = fullName.indexOf('(');
+        const maDangPhom = splitIndex !== -1 ? fullName.substring(0, splitIndex).trim() : fullName;
 
-            input.addEventListener('input', () => {
-                const keyword = input.value.toLowerCase();
-                const filtered = allDepartments.filter(dep =>
-                    `${dep.DepName} (${dep.ID})`.toLowerCase().includes(keyword)
-                ).slice(0, 10); // hiển thị tối đa 10 dòng
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="d-none">${item.LastMatNo}</td>
+            <td>${maDangPhom}</td>
+            <td>${fullName}</td>
+            <td>${item.LastType.trim()}</td>
+            <td>${item.Material.trim()}</td>
+            <td>${item.LastSize.trim()}</td>
+            <td>${(item.SoLuongTonKho ?? '').toString().trim()}</td>
+            <td><input type="number" name="quantity[${itemIndex}][]" class="form-control text-center quantity-input" value="0" min="0" data-item-index="${itemIndex}"></td>
+        `;
+        // Thêm event listener ngay khi tạo input
+        tr.querySelector('.quantity-input').addEventListener('input', function() {
+            const isPositive = parseInt(this.value, 10) > 0;
+            this.style.backgroundColor = isPositive ? '#EEF594FF' : '';
+            this.style.color = isPositive ? 'red' : '';
+            updateTotalQuantity();
+        });
+        return tr;
+    }
+    
+    // Thêm một ô input mã dạng phom mới
+    const MAX_PHOM_CODES = 5;
+    function addItemCodeInput() {
+        const currentPhomCodeCount = dom.itemCodeInputsContainer.querySelectorAll('.item-code-entry').length;
+        if (currentPhomCodeCount >= MAX_PHOM_CODES) {
+            alert(`Bạn chỉ có thể thêm tối đa ${MAX_PHOM_CODES} mã dạng phom.`);
+            return;
+        }
 
-                dropdown.innerHTML = '';
-                if (filtered.length === 0 || keyword === '') {
-                    dropdown.style.display = 'none';
-                    return;
-                }
+        const newIndex = appState.nextItemIndex++;
+        const newEntry = document.createElement('div');
+        newEntry.classList.add('row', 'mb-2', 'item-code-entry', 'align-items-center');
+        newEntry.innerHTML = `
+            <div class="col-md-3">
+                <div class="input-group">
+                    <span class="input-group-text"><strong>Mã dạng phom:</strong></span>
+                    <input type="text" class="form-control item-code-input" data-item-index="${newIndex}" placeholder="">
+                    <button type="button" class="btn btn-outline-secondary add-item-code-btn" title="Thêm mã dạng phom">+</button>
+                    <button type="button" class="btn btn-outline-danger remove-item-code-btn" title="Xóa mã dạng phom">-</button>
+                </div>
+            </div>
+        `;
+        dom.itemCodeInputsContainer.appendChild(newEntry);
 
-                filtered.forEach(dep => {
-                    const div = document.createElement('div');
-                    div.className = 'dropdown-item';
-                    div.textContent = `${dep.DepName}`;
-                    div.dataset.id = dep.ID;
-                    div.addEventListener('click', () => {
-                        input.value = dep.DepName;
-                        input.dataset.id = dep.ID;
-                        dropdown.style.display = 'none';
-                    });
-                    dropdown.appendChild(div);
-                });
+        updateRemoveButtonsVisibility();
+    }
 
-                dropdown.style.display = 'block';
-            });
+    // Xóa một ô input mã dạng phom và bảng liên quan
+    function removeItemCodeInput(entryElement, itemIndex) {
+        entryElement.remove(); 
+        document.getElementById(`phom-table-section-${itemIndex}`)?.remove(); 
+        delete appState.itemCodeData[itemIndex]; 
+        updateTotalQuantity(); 
+        updateRemoveButtonsVisibility(); 
+    }
 
-            document.addEventListener('click', (e) => {
-                if (!input.contains(e.target) && !dropdown.contains(e.target)) {
-                    dropdown.style.display = 'none';
-                }
-            });
+    // Cập nhật hiển thị nút xóa
+    function updateRemoveButtonsVisibility() {
+        const removeButtons = dom.itemCodeInputsContainer.querySelectorAll('.remove-item-code-btn');
+        if (removeButtons.length > 1) {
+            removeButtons.forEach(btn => btn.style.display = 'block');
+        } else if (removeButtons.length === 1) {
+            removeButtons[0].style.display = 'none'; 
+        }
+    }
+    
+    async function fetchPhomInfo(matNo, itemIndex) {
+        const existingMatNos = new Set();
+        dom.itemCodeInputsContainer.querySelectorAll('.item-code-input').forEach(input => {
+            // Kiểm tra nếu mã không phải từ ô input hiện tại nhưng trùng với mã vừa nhập
+            if (input.dataset.itemIndex !== String(itemIndex) && input.value.trim() === matNo) {
+                existingMatNos.add(input.value.trim());
+            }
         });
 
-
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('submitBtn').addEventListener('click', handleFormSubmit);
-        });
-
-        const currentUser = <?php echo json_encode($user); ?>;
-
-        function handleFormSubmit(e) {
-            console.log("Submit event triggered.");
-            console.log("Current user:", currentUser);
-
-            if (!currentUser) {
-                alert('Vui lòng đăng nhập để đăng ký mượn!');
-                const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
-                loginModal.show();
-                return;
+        if (existingMatNos.has(matNo)) {
+            alert(`Mã dạng phom "${matNo}" đã được nhập. Vui lòng nhập mã khác.`);
+            // Xóa giá trị trong ô input hiện tại
+            const currentInput = dom.itemCodeInputsContainer.querySelector(`input[data-item-index="${itemIndex}"]`);
+            if (currentInput) {
+                currentInput.value = '';
             }
-
-            const formData = getFormData();
-            console.log("Form data:", formData);
-            const validation = validateForm(formData);
-            console.log("Validation result:", validation);
-
-            if (!validation.isValid) return;
-
-            const details = getBorrowDetails();
-            if (details.length === 0) {
-                alert("Vui lòng nhập ít nhất một dòng có số lượng mượn.");
-                return;
-            }
-
-            const payload = {
-                UserID: formData.cardNumber,
-                UserName: formData.borrowerName,
-                DepID: formData.depID,
-                LastMatNo: formData.matNo,
-                DateBorrow: convertToDateTime(formData.borrowDate),
-                DateReceive: convertToDateTime(formData.expectedDate),
-                OfficerId: formData.confirmOfficer,
-                OfficerName: confirmOfficerNameInput.value.trim(),
-                Details: details
-            };
-
-            submitData(payload);
+            // Xóa bảng chi tiết nếu nó đã tồn tại từ lần nhập trước
+            document.getElementById(`phom-table-section-${itemIndex}`)?.remove();
+            delete appState.itemCodeData[itemIndex];
+            updateTotalQuantity();
+            return; // Dừng hàm nếu mã bị trùng
         }
 
-        function getFormData() {
-            const cardNumber = document.getElementById('cardNumber').value.trim();
-            const borrowerName = document.getElementById('borrowerName').value.trim();
-            const unitRaw = document.getElementById('unitSelect').value.trim();
-            const borrowDate = document.getElementById('borrowDate').value.trim();
-            const expectedDate = document.getElementById('expectedDate').value.trim();
-            // const matNo = document.getElementById('mainItemCode').value.trim();
-            const depID = document.getElementById('unitSelect').dataset.id || '';
-            const confirmOfficer = document.getElementById('confirmOfficer').value.trim();
-            const confirmOfficerName = document.getElementById('confirmOfficerName').value.trim();
-            const firstRow = document.querySelector('#phomTableBody tr');
-            const matNo = firstRow ? firstRow.cells[0].textContent.trim() : '';
 
-            return {
-                cardNumber,
-                borrowerName,
-                unitRaw,
-                borrowDate,
-                expectedDate,
-                matNo,
-                depID,
-                confirmOfficer,
-                confirmOfficerName
-            };
+        const payload = { LastMatNo: matNo };
+        const data = await fetchAPI('fetch_phom_info.php', { body: JSON.stringify(payload) });
+
+        let phomTableSection = document.getElementById(`phom-table-section-${itemIndex}`);
+        if (!phomTableSection) {
+            phomTableSection = document.createElement('div');
+            phomTableSection.id = `phom-table-section-${itemIndex}`;
+            phomTableSection.classList.add('phom-table-section');
+            dom.phomTablesContainer.appendChild(phomTableSection);
+        }
+        
+        let tableBody = phomTableSection.querySelector('tbody');
+        if (!tableBody) {
+            // Nếu chưa có bảng, tạo cấu trúc bảng mới
+            phomTableSection.innerHTML = `
+                <h5>Chi tiết mã dạng phom: <strong>${matNo}</strong></h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered text-center align-middle">
+                        <thead style="background-color: #bde0f6;">
+                            <tr>
+                                <th class="d-none">Mã vật tư</th>
+                                <th>Mã dạng phom</th>
+                                <th>Tên Phom</th>
+                                <th>Loại</th>
+                                <th>Chất liệu</th>
+                                <th>Size</th>
+                                <th>Tồn kho</th>
+                                <th>Số lượng đăng ký</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            `;
+            tableBody = phomTableSection.querySelector('tbody');
+        } else {
+            tableBody.innerHTML = ''; 
         }
 
-        function validateForm({
-            cardNumber,
-            borrowerName,
-            unitRaw,
-            borrowDate,
-            expectedDate,
-            matNo,
-            confirmOfficer,
-        }) {
-            let isValid = true;
+        if (data.status === 'Success' && data.data?.jsonArray?.length > 0) {
+            const sortedData = data.data.jsonArray.sort((a, b) => 
+                a.LastSize.trim().localeCompare(b.LastSize.trim(), undefined, { numeric: true })
+            );
+            
+            appState.itemCodeData[itemIndex] = sortedData; 
 
-            if (!cardNumber || !/^\d{5}$/.test(cardNumber)) {
-                showError('cardNumber', false, 'Số thẻ phải hợp lệ!');
-                isValid = false;
-            } else {
-                showError('cardNumber', true);
+            sortedData.forEach(item => {
+                const row = createPhomTableRow(item, itemIndex);
+                tableBody.appendChild(row);
+            });
+        } else {
+            alert(data.message || `Không tìm thấy dữ liệu phom cho mã: ${matNo}.`);
+            phomTableSection.remove();
+            delete appState.itemCodeData[itemIndex]; 
+            const currentInput = dom.itemCodeInputsContainer.querySelector(`input[data-item-index="${itemIndex}"]`);
+            if (currentInput) {
+                currentInput.value = '';
             }
-
-            if (!borrowerName) {
-                showError('borrowerName', false, 'Tên người mượn phải hợp lệ.');
-                isValid = false;
-            } else {
-                showError('borrowerName', true);
-            }
-
-            const matchedDepartment = allDepartments.find(dep => dep.DepName === unitRaw);
-
-            if (!matchedDepartment) {
-                showError('unitSelect', false, 'Đơn vị không hợp lệ hoặc không tồn tại.');
-                isValid = false;
-            } else {
-                showError('unitSelect', true);
-                document.getElementById('unitSelect').dataset.id = matchedDepartment.ID;
-            }
-
-
-            if (!expectedDate) {
-                showError('expectedDate', false, 'Vui lòng chọn ngày muốn nhận.');
-                isValid = false;
-            } else {
-                showError('expectedDate', true);
-            }
-
-            const [d1, m1, y1] = borrowDate.split('/');
-            const [d2, m2, y2] = expectedDate.split('/');
-
-            const date1 = new Date(`${y1}-${m1}-${d1}`);
-            const date2 = new Date(`${y2}-${m2}-${d2}`);
-
-            if (date2 < date1) {
-                showError('expectedDate', false, 'Ngày muốn nhận phải sau hoặc bằng ngày mượn.');
-                isValid = false;
-            } else {
-                showError('expectedDate', true);
-            }
-
-            if (!matNo) {
-                showError('mainItemCode', false, 'Vui lòng nhập mã dạng phom.');
-                isValid = false;
-            } else {
-                showError('mainItemCode', true);
-            }
-
-            if (!confirmOfficer) {
-                showError('confirmOfficer', false, 'Vui lòng nhập cán bộ xác nhận.');
-                isValid = false;
-            } else {
-                showError('confirmOfficer', true);
-            }
-
-            if (confirmOfficerNameInput.value.trim() === '') {
-                showError('confirmOfficerName', false, 'Tên cán bộ xác nhận không hợp lệ.');
-                isValid = false;
-            } else {
-                showError('confirmOfficerName', true);
-            }
-
-            if (!isValid) {
-                return;
-            }
-
-            return {
-                isValid
-            };
         }
+        updateTotalQuantity(); // Cập nhật tổng số lượng sau khi fetch dữ liệu mới
+    }
 
-        function getBorrowDetails() {
-            const rows = document.querySelectorAll('#phomTableBody tr');
-            const details = [];
+    async function updateUserInfo(inputId, nameId, unitId = null) {
+        const id = inputId.value.trim();
+        nameId.value = '';
+        nameId.disabled = false;
+        if (unitId) unitId.disabled = false;
 
-            rows.forEach(row => {
+        if (!id) return;
+
+        const payload = { userID: id, companyName: appState.companyName };
+        const data = await fetchAPI('get_user_info.php', { body: JSON.stringify(payload) });
+
+        if (data.status === 200 && data.data?.USERNAME) {
+            nameId.value = data.data.USERNAME;
+            nameId.disabled = true;
+
+            if (unitId) {
+                const userDepName = data.data.DEPID.trim();
+                const matchedDep = appState.allDepartments.find(dep => dep.DepName.trim() === userDepName);
+                if (matchedDep) {
+                    unitId.value = matchedDep.DepName;
+                    unitId.dataset.id = matchedDep.ID;
+                    unitId.disabled = true;
+                } else {
+                    unitId.value = '';
+                    alert('Không tìm thấy đơn vị của người dùng.');
+                }
+            }
+        } else {
+            alert(data.message || `Không tìm thấy người dùng với mã: ${id}`);
+        }
+    }
+
+    function getBorrowDetails() {
+        const details = [];
+        // Duyệt qua tất cả các hàng trong tất cả các bảng chi tiết
+        dom.phomTablesContainer.querySelectorAll('.phom-table-section tbody tr').forEach(row => {
+            const quantityInput = row.querySelector('.quantity-input');
+            const quantity = parseInt(quantityInput?.value || 0, 10);
+
+            if (quantity > 0) {
                 const cells = row.cells;
-                const matNo = cells[0]?.textContent.trim(); 
-                const name = cells[2]?.textContent.trim(); 
-                const size = cells[5]?.textContent.trim(); 
-                const quantityInput = row.querySelector('.quantity-input');
-                const quantity = parseInt(quantityInput?.value || 0, 10);
-
-                if (quantity > 0) {
-                    details.push({
-                        LastMatNo: matNo,
-                        LastName: name,
-                        LastSize: size,
-                        LastSum: quantity
-                    });
-                }
-            });
-
-            return details;
-        }
-
-
-        function convertToDateTime(dateStr, timeStr = '00:00:00') {
-            const [d, m, y] = dateStr.split('/');
-            return `${y}-${m}-${d} ${timeStr}`;
-        }
-
-        function submitData(payload) {
-            fetch('submit_borrow.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'Success') {
-                        alert("Bạn đã đăng ký mượn thành công!");
-                        location.reload();
-                        console.log("Payload đã gửi:", payload);
-                        console.log("Phản hồi từ server:", data);
-                    } else {
-                        alert(data.message || "Có lỗi xảy ra.");
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    alert("Lỗi gửi đăng ký.");
+                details.push({
+                    LastMatNo: cells[0]?.textContent.trim(),
+                    // LastName: cells[2]?.textContent.trim(), // Để lại tên đầy đủ
+                    LastName: cells[1]?.textContent.trim(), // Lấy mã dạng phom từ cột thứ 2 (đã hiển thị)
+                    LastSize: cells[5]?.textContent.trim(),
+                    LastSum: quantity,
                 });
+            }
+        });
+        return details;
+    }
+
+    function validateForm() {
+        let isValid = true;
+        const checks = {
+            cardNumber: /^\d{5}$/.test(dom.cardNumber.value),
+            borrowerName: dom.borrowerName.value.trim() !== '',
+            unitSelect: appState.allDepartments.some(dep => dep.DepName === dom.unitSelect.value.trim()),
+            expectedDate: dom.expectedDate.value.trim() !== '',
+            confirmOfficer: dom.confirmOfficer.value.trim() !== '',
+            confirmOfficerName: dom.confirmOfficerName.value.trim() !== ''
+        };
+
+        const messages = {
+            cardNumber: 'Số thẻ phải là 5 chữ số.',
+            borrowerName: 'Tên người mượn không được để trống.',
+            unitSelect: 'Đơn vị không hợp lệ.',
+            expectedDate: 'Vui lòng chọn ngày muốn nhận.',
+            confirmOfficer: 'Vui lòng nhập mã cán bộ xác nhận.',
+            confirmOfficerName: 'Tên cán bộ xác nhận không hợp lệ.'
+        };
+
+        for (const [id, condition] of Object.entries(checks)) {
+            showError(dom[id], condition, messages[id]);
+            if (!condition) isValid = false;
         }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const inputs = ['cardNumber', 'borrowerName', 'unitSelect', 'expectedDate', 'mainItemCode', 'confirmOfficer'];
-
-            inputs.forEach(id => {
-                const input = document.getElementById(id);
-                if (input) {
-                    input.addEventListener('focus', () => {
-                        // Khi focus vào ô nào, kiểm tra các ô khác
-                        inputs.forEach(checkId => {
-                            // if (checkId === id) return; // bỏ qua chính nó
-
-                            const otherInput = document.getElementById(checkId);
-                            if (!otherInput) return;
-
-                            const value = otherInput.value.trim();
-
-                            // Chỉ kiểm tra nếu đang có class is-invalid
-                            if (otherInput.closest('.input-group').classList.contains('is-invalid')) {
-                                switch (checkId) {
-                                    case 'cardNumber':
-                                        if (value && !isNaN(value)) showError('cardNumber', true);
-                                        break;
-                                    case 'borrowerName':
-                                        if (value) showError('borrowerName', true);
-                                        break;
-                                    case 'unitSelect':
-                                        const matched = allDepartments.find(dep => dep.DepName === value);
-                                        if (matched) {
-                                            showError('unitSelect', true);
-                                            otherInput.dataset.id = matched.ID;
-                                        }
-                                        break;
-                                    case 'expectedDate':
-                                        const borrowDate = document.getElementById('borrowDate').value.trim();
-                                        if (borrowDate && value) {
-                                            const [d1, m1, y1] = borrowDate.split('/');
-                                            const [d2, m2, y2] = value.split('/');
-                                            const date1 = new Date(`${y1}-${m1}-${d1}`);
-                                            const date2 = new Date(`${y2}-${m2}-${d2}`);
-                                            if (date2 >= date1) showError('expectedDate', true);
-                                        }
-                                        break;
-                                    case 'mainItemCode':
-                                        if (value) showError('mainItemCode', true);
-                                        break;
-                                    case 'confirmOfficer':
-                                        if (value) showError('confirmOfficer', true);
-                                        break;
-                                }
-                            }
-                        });
-                    });
+        
+        // Kiểm tra xem có ít nhất một mã dạng phom được nhập và có dữ liệu không
+        const itemCodeInputs = dom.itemCodeInputsContainer.querySelectorAll('.item-code-input');
+        let hasValidItemCode = false;
+        if (itemCodeInputs.length > 0) {
+            // Kiểm tra từng input, không chỉ input đầu tiên
+            let anyInputFilled = false;
+            itemCodeInputs.forEach(input => {
+                const itemIndex = input.dataset.itemIndex;
+                if (input.value.trim() !== '' && appState.itemCodeData[itemIndex] && appState.itemCodeData[itemIndex].length > 0) {
+                    anyInputFilled = true;
+                    // Xóa lỗi nếu input này hợp lệ
+                    showError(input, true); 
+                } else if (input.value.trim() === '') {
+                    // Nếu input trống, không đánh dấu là lỗi ngay, chỉ cần biết có ít nhất một cái được điền
+                    showError(input, true); 
+                } else {
+                    // Nếu input có giá trị nhưng không tìm thấy dữ liệu
+                    showError(input, false, `Không tìm thấy dữ liệu cho mã: ${input.value.trim()}`);
                 }
             });
-        });
-    </script>
-</body>
+            hasValidItemCode = anyInputFilled;
 
+            if (!hasValidItemCode) {
+                // Nếu không có bất kỳ mã nào hợp lệ, hiển thị lỗi chung cho input đầu tiên
+                showError(itemCodeInputs[0], false, 'Vui lòng nhập ít nhất một mã dạng phom hợp lệ và đã có dữ liệu.');
+                isValid = false;
+            }
+        } else {
+            isValid = false; 
+        }
+
+
+        // Kiểm tra ngày đặc biệt
+        if (checks.expectedDate) {
+            const borrowDate = new Date(convertToDateTime(dom.borrowDate.value).split(' ')[0]);
+            const expectedDate = new Date(convertToDateTime(dom.expectedDate.value).split(' ')[0]);
+            if (expectedDate < borrowDate) {
+                showError(dom.expectedDate, false, 'Ngày nhận phải sau hoặc bằng ngày mượn.');
+                isValid = false;
+            }
+        }
+
+        // Kiểm tra tổng số lượng đăng ký
+        if (parseInt(dom.mainTotalQuantity.value, 10) <= 0) {
+            alert('Vui lòng nhập số lượng đăng ký lớn hơn 0 cho ít nhất một mặt hàng.');
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    async function handleFormSubmit() {
+        if (!appState.currentUser) {
+            alert('Vui lòng đăng nhập để thực hiện chức năng này!');
+            dom.loginModal.show();
+            return;
+        }
+
+        if (!validateForm()) {
+            return; // Dừng lại nếu form không hợp lệ
+        }
+
+        const details = getBorrowDetails();
+        if (details.length === 0) {
+            alert("Vui lòng nhập số lượng cho ít nhất một size.");
+            return;
+        }
+        
+        // Lấy LastMatNo từ chi tiết đầu tiên nếu cần cho payload tổng thể
+        const firstDetailMatNo = details.length > 0 ? details[0].LastMatNo : ''; 
+
+        const payload = {
+            UserID: dom.cardNumber.value.trim(),
+            UserName: dom.borrowerName.value.trim(),
+            DepID: dom.unitSelect.dataset.id,
+            LastMatNo: firstDetailMatNo, 
+            DateBorrow: convertToDateTime(dom.borrowDate.value),
+            DateReceive: convertToDateTime(dom.expectedDate.value),
+            OfficerId: dom.confirmOfficer.value.trim(),
+            OfficerName: dom.confirmOfficerName.value.trim(),
+            Details: details, // Đây là mảng chứa tất cả các chi tiết từ các bảng khác nhau
+        };
+        
+        const data = await fetchAPI('submit_borrow.php', { body: JSON.stringify(payload) });
+        
+        if (data.status === 'Success') {
+            alert("Bạn đã đăng ký mượn thành công!");
+            location.reload();
+        } else {
+            alert(data.message || "Có lỗi xảy ra khi gửi dữ liệu.");
+        }
+    }
+
+
+    // --- 5. Gắn các Event Listeners (Sử dụng Event Delegation) ---
+    // Gắn sự kiện cho container cha và xử lý các sự kiện của các nút con
+    dom.itemCodeInputsContainer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('add-item-code-btn')) {
+            addItemCodeInput();
+        } else if (e.target.classList.contains('remove-item-code-btn')) {
+            const entryElement = e.target.closest('.item-code-entry');
+            const itemIndex = entryElement.querySelector('.item-code-input').dataset.itemIndex;
+            removeItemCodeInput(entryElement, itemIndex);
+        }
+    });
+
+    dom.itemCodeInputsContainer.addEventListener('blur', (e) => {
+        if (e.target.classList.contains('item-code-input')) {
+            const matNo = e.target.value.trim();
+            const itemIndex = e.target.dataset.itemIndex;
+            if (matNo) fetchPhomInfo(matNo, itemIndex);
+        }
+    }, true); // Use capture phase for blur event
+
+    dom.cardNumber.addEventListener('blur', () => updateUserInfo(dom.cardNumber, dom.borrowerName, dom.unitSelect));
+    dom.confirmOfficer.addEventListener('blur', () => updateUserInfo(dom.confirmOfficer, dom.confirmOfficerName));
+    
+    dom.submitBtn.addEventListener('click', handleFormSubmit);
+
+    // Xử lý dropdown cho đơn vị
+    dom.unitSelect.addEventListener('input', () => {
+        const keyword = dom.unitSelect.value.toLowerCase();
+        const filtered = appState.allDepartments.filter(dep => 
+            `${dep.DepName} (${dep.ID})`.toLowerCase().includes(keyword)
+        ).slice(0, 10);
+        
+        dom.unitDropdown.innerHTML = '';
+        dom.unitDropdown.style.display = (filtered.length === 0 || keyword === '') ? 'none' : 'block';
+
+        filtered.forEach(dep => {
+            const div = document.createElement('div');
+            div.className = 'dropdown-item';
+            div.textContent = dep.DepName;
+            div.addEventListener('click', () => {
+                dom.unitSelect.value = dep.DepName;
+                dom.unitSelect.dataset.id = dep.ID;
+                dom.unitDropdown.style.display = 'none';
+            });
+            dom.unitDropdown.appendChild(div);
+        });
+    });
+    
+    document.addEventListener('click', (e) => {
+        // Đóng dropdown nếu click ra ngoài
+        if (!dom.unitSelect.contains(e.target) && !dom.unitDropdown.contains(e.target)) {
+            dom.unitDropdown.style.display = 'none';
+        }
+    });
+
+
+    // --- 6. Khởi tạo ---
+    async function initializeApp() {
+        initializeDatepickers();
+        updateTotalQuantity(); 
+
+        // Cập nhật trạng thái nút xóa ban đầu
+        updateRemoveButtonsVisibility();
+        
+        try {
+            const data = await fetchAPI('fetch_departments.php');
+            if (data.status === 'Success' && data.data?.jsonArray) {
+                appState.allDepartments = data.data.jsonArray;
+            } else {
+                console.error("Không tải được danh sách đơn vị.");
+            }
+        } catch (error) {
+            console.error("Lỗi khi tải danh sách đơn vị:", error);
+        }
+    }
+
+    initializeApp();
+});
+</script>
 </html>

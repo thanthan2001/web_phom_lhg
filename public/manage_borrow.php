@@ -4,6 +4,13 @@ include_once __DIR__ . '/modals/login_modal.php';
 
 $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
 $companyName = isset($user['companyName']) ? $user['companyName'] : '';
+function formatQuantity($quantity) {
+    if (fmod($quantity, 1) !== 0.0) { 
+        return number_format($quantity, 1); 
+    } else {
+        return number_format($quantity, 0); 
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -96,33 +103,19 @@ $companyName = isset($user['companyName']) ? $user['companyName'] : '';
         }
 
         .lend-table th:nth-child(1),
-        .lend-table td:nth-child(1) {
-            width: 18%;
-        }
-
+        .lend-table td:nth-child(1),
         .lend-table th:nth-child(2),
         .lend-table td:nth-child(2) {
-            width: 18%;
+            width: 25%;
         }
 
         .lend-table th:nth-child(3),
-        .lend-table td:nth-child(3) {
-            width: 16%;
-        }
-
+        .lend-table td:nth-child(3),
         .lend-table th:nth-child(4),
-        .lend-table td:nth-child(4) {
-            width: 16%;
-        }
-
+        .lend-table td:nth-child(4),
         .lend-table th:nth-child(5),
         .lend-table td:nth-child(5) {
-            width: 16%;
-        }
-
-        .lend-table th:nth-child(6),
-        .lend-table td:nth-child(6) {
-            width: 16%;
+            width: 20%;
         }
 
 
@@ -192,6 +185,11 @@ $companyName = isset($user['companyName']) ? $user['companyName'] : '';
             cursor: default;
             font-weight: normal;
         }
+
+        .lend-table tbody tr:hover {
+            background-color: #fff8dc;
+            cursor: pointer;
+        }
     </style>
 </head>
 
@@ -205,6 +203,7 @@ $companyName = isset($user['companyName']) ? $user['companyName'] : '';
             <div class="main-content" style="padding-top: 60px;">
                 <div class="search-box">
                     <input type="text" id="searchInput" placeholder="Nhập để tìm kiếm...">
+                    <input type="date" id="dateInput">
                     <button class="btn btn-sm btn-outline-secondary" onclick="filterCards()">
                         <i class="fas fa-search"></i>
                     </button>
@@ -226,24 +225,54 @@ $companyName = isset($user['companyName']) ? $user['companyName'] : '';
                 $response = json_decode($responseJson, true);
 
                 $bills = [];
-                if ($response['status'] === 'Success') {
+                if ($response['status'] === 'Success' && !empty($response['data'])) {
                     foreach ($response['data'] as $item) {
-                        $bills[$item['ID_bill']]['meta'] = $item;
-                        $bills[$item['ID_bill']]['details'][] = $item;
+                        $billId = $item['ID_bill'];
+
+                        // Initialize bill data if not exists
+                        if (!isset($bills[$billId])) {
+                            $bills[$billId] = [
+                                'meta' => [
+                                    'ID_bill' => $billId,
+                                    'Userid' => $item['Userid'],
+                                    'BorrowerName' => $item['BorrowerName'],
+                                    'DepName' => $item['DepName'],
+                                    'OfficerId' => $item['OfficerId'],
+                                    'OfficerName' => $item['OfficerName'],
+                                    'isConfirm' => $item['isConfirm'],
+                                    'StateLastBill' => $item['StateLastBill'],
+                                    'ToTalPhomNotBinding' => (float)$item['ToTalPhomNotBinding'], // Take first value
+                                    'DateBorrow' => $item['DateBorrow'], // Initialize with current date
+                                    'DateReceive' => $item['DateReceive'], // Initialize with current date
+                                ],
+                                'details' => []
+                            ];
+                        }
+
+                        // Update DateBorrow (earliest date)
+                        if (strtotime($item['DateBorrow']) < strtotime($bills[$billId]['meta']['DateBorrow'])) {
+                            $bills[$billId]['meta']['DateBorrow'] = $item['DateBorrow'];
+                        }
+
+                        // Update DateReceive (latest date)
+                        if (strtotime($item['DateReceive']) > strtotime($bills[$billId]['meta']['DateReceive'])) {
+                            $bills[$billId]['meta']['DateReceive'] = $item['DateReceive'];
+                        }
+
+                        $bills[$billId]['details'][] = $item;
                     }
 
-                    $bills = array_values($bills);
-
+                    // Sort bills based on isConfirm and DateBorrow
                     usort($bills, function ($a, $b) {
                         $a_confirm = !empty($a['meta']['isConfirm']);
                         $b_confirm = !empty($b['meta']['isConfirm']);
 
-                        // Ưu tiên đơn chưa duyệt
+                        // Prioritize unconfirmed bills
                         if ($a_confirm !== $b_confirm) {
                             return $a_confirm - $b_confirm;
                         }
 
-                        //sắp theo ngày mượn giảm dần
+                        // Sort by DateBorrow in descending order
                         $a_date = strtotime($a['meta']['DateBorrow']);
                         $b_date = strtotime($b['meta']['DateBorrow']);
 
@@ -258,7 +287,7 @@ $companyName = isset($user['companyName']) ? $user['companyName'] : '';
                     </div>
                 <?php endif; ?>
 
-                <?php foreach ($bills as $billId => $group): ?>
+                <?php foreach ($bills as $group): ?>
                     <?php
                     $meta = $group['meta'];
                     $details = $group['details'];
@@ -281,7 +310,7 @@ $companyName = isset($user['companyName']) ? $user['companyName'] : '';
                     $cardStyle = "background-color: $backgroundColor; border: 1px solid $borderColor;";
 
                     ?>
-                    <div class="lend-card borrow-card" style="<?= $cardStyle ?>" data-content="<?= htmlspecialchars(strtolower($meta['ID_bill'] . ' ' . $meta['Userid'] . ' ' . $meta['BorrowerName'] . ' ' . $meta['DepName'] . ' ' . $meta['OfficerId'] . ' ' . $meta['OfficerName'])) ?>">
+                    <div class="lend-card borrow-card" style="<?= $cardStyle ?>" data-content="<?= htmlspecialchars(strtolower($meta['ID_bill'] . ' ' . $meta['Userid'] . ' ' . $meta['BorrowerName'] . ' ' . $meta['DepName'] . ' ' . $meta['OfficerId'] . ' ' . $meta['OfficerName'] . ' ' . date('d/m/Y', strtotime($meta['DateBorrow'])) . ' ' . date('d/m/Y', strtotime($meta['DateReceive']))) ) ?>">
                         <button
                             class="confirm-btn"
                             data-bill-id="<?= $meta['ID_bill'] ?>"
@@ -308,8 +337,18 @@ $companyName = isset($user['companyName']) ? $user['companyName'] : '';
                         </div>
 
                         <div class="info-grid">
-                            <div><strong>Tổng SL:</strong>
+                            <div><strong>Tổng SL đăng ký:</strong>
                                 <?= array_sum(array_column($details, 'LastSum')) ?>
+                            </div>
+                            <?php
+                            $totalScanned = array_sum(array_column($details, 'TotalPairsScanned'));
+                            $totalBorrowed = $meta['ToTalPhomNotBinding'] + $totalScanned;
+                            ?>
+                            <div><strong>Tổng SL cho mượn:</strong>
+                                <?= formatQuantity($totalBorrowed) ?>
+                            </div>
+                            <div><strong>SL ghi chú:</strong>
+                                <?= formatQuantity($meta['ToTalPhomNotBinding']) ?>
                             </div>
                             <?php
                             $isScanned = $meta['StateLastBill'];
@@ -327,25 +366,21 @@ $companyName = isset($user['companyName']) ? $user['companyName'] : '';
                         <table class="lend-table">
                             <thead>
                                 <tr>
-                                    <th style="display: none;">Mã vật tư</th>
                                     <th>Mã dạng phom</th>
                                     <th>Tên Phom</th>
                                     <th>Size</th>
-                                    <th>SL đăng ký</th>
-                                    <th>SL cho mượn</th>
-                                    <th>SL đã scan</th>
+                                    <th>Đã đăng ký</th>
+                                    <th>Đã quét</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($details as $detail): ?>
                                     <?php $maDangPhom = explode('(', $detail['LastName'])[0]; ?>
                                     <tr>
-                                        <td style="display: none;"><?= htmlspecialchars($detail['LastMatNo']) ?></td>
                                         <td><?= htmlspecialchars(trim($maDangPhom)) ?></td>
                                         <td><?= htmlspecialchars($detail['LastName']) ?></td>
                                         <td><?= trim($detail['LastSize']) ?></td>
                                         <td><?= intval($detail['LastSum']) ?></td>
-                                        <td><?= intval($detail['SoLuongChoMuon']) ?></td>
                                         <td><?= intval($detail['TotalPairsScanned']) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -371,22 +406,42 @@ $companyName = isset($user['companyName']) ? $user['companyName'] : '';
             const cards = document.querySelectorAll('.borrow-card');
             const noResultMessage = document.getElementById('no-result-message');
 
-            function searchBorrowCards() {
-                const keyword = searchInput.value.trim().toLowerCase();
+            function filterCards() {
+                const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+                const dateValue = document.getElementById('dateInput').value; // dạng YYYY-mm-dd
                 let visibleCount = 0;
 
+                const cards = document.querySelectorAll('.borrow-card');
                 cards.forEach(card => {
                     const content = card.getAttribute('data-content');
-                    const match = !keyword || content.includes(keyword);
+                    let match = true;
+
+                    if (keyword && !content.includes(keyword)) {
+                        match = false;
+                    }
+
+                    if (dateValue) {
+                        const borrowDate = new Date(content.match(/\d{2}\/\d{2}\/\d{4}/)[0].split('/').reverse().join('-'));
+                        const selectedDate = new Date(dateValue);
+                        
+                        // Compare dates by converting them to YYYY-MM-DD strings to avoid time issues
+                        const borrowDateFormatted = borrowDate.toISOString().slice(0,10);
+                        const selectedDateFormatted = selectedDate.toISOString().slice(0,10);
+
+                        if (borrowDateFormatted !== selectedDateFormatted) {
+                            match = false;
+                        }
+                    }
+
                     card.style.display = match ? '' : 'none';
                     if (match) visibleCount++;
                 });
 
-                noResultMessage.style.display = visibleCount === 0 ? 'block' : 'none';
+                document.getElementById('no-result-message').style.display = visibleCount === 0 ? 'block' : 'none';
             }
 
-            searchInput.addEventListener('input', searchBorrowCards);
-            searchButton.addEventListener('click', searchBorrowCards);
+            document.getElementById('searchInput').addEventListener('input', filterCards);
+            document.getElementById('dateInput').addEventListener('change', filterCards);
 
             document.querySelectorAll('.confirm-btn').forEach(button => {
                 button.addEventListener('click', async function() {
