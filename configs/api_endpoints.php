@@ -22,4 +22,5 @@ return [
     'layDonMuonTheoUser'=> API_BASE_URL . '/phom/getBorrowBillByUser',
     "layTatCaDonTra" => API_BASE_URL . '/phom/getAllReturnBill',
     'layTatCaPhom'=> API_BASE_URL . '/phom/getAllPhomManagement',
+    "getBorrowPhomState" => API_BASE_URL . '/phom/getBorrowPhomState',
 ];

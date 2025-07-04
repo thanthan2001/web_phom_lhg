@@ -121,6 +121,7 @@ $adminUserIDs = include '../configs/admins.php';
     <li><a href="manage_borrow.php" data-page="Quản lý đơn mượn"><i class="fas fa-tasks"></i> <span>Quản lý đơn mượn</span></a></li>
     <li><a href="manage_return.php" data-page="Quản lý đơn trả"><i class="fas fa-undo-alt"></i> <span>Quản lý đơn trả</span></a></li>
     <li><a href="manage_phom.php" data-page="Quản lý phom"><i class="fas fa-shoe-prints"></i> <span>Quản lý phom</span></a></li>
+    <li><a href="manage_borrow_phom_state.php" data-page="Quản lý trạng thái mượn phom"><i class="fas fa-cogs"></i> <span>Quản lý trạng thái mượn phom</span></a></li>
   <?php else: ?>
     <li><a href="lend_register.php" data-page="Đăng ký mượn"><i class="fas fa-hand-holding"></i> <span>Đăng ký mượn</span></a></li>
     <li><a href="history_register.php" data-page="Lịch sử mượn"><i class="fas fa-file-alt"></i> <span>Lịch sử mượn trả</span></a></li>

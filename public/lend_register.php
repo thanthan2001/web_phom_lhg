@@ -606,7 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 details.push({
                     LastMatNo: cells[0]?.textContent.trim(),
                     // LastName: cells[2]?.textContent.trim(), // Để lại tên đầy đủ
-                    LastName: cells[1]?.textContent.trim(), // Lấy mã dạng phom từ cột thứ 2 (đã hiển thị)
+                    LastName: cells[2]?.textContent.trim(), 
                     LastSize: cells[5]?.textContent.trim(),
                     LastSum: quantity,
                 });
