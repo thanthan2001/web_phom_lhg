@@ -45,6 +45,10 @@ foreach ($donMuon as $item) {
     if (!isset($item['DepName']) || !isset($item['LastName']) || !isset($item['LastSize']) || !isset($item['TotalPairsScanned'])) {
         continue;
     }
+    
+    if ((int)$item['TotalPairsScanned'] === 0) {
+        continue;
+    }
 
     $depName = trim($item['DepName']);
     $lastName = trim($item['LastName']);
@@ -82,6 +86,24 @@ foreach ($donMuon as $item) {
 
     $borrowedByDept[$depName][$lastNo]['totalBorrowed'] += $borrowedQty;
 }
+
+foreach ($borrowedByDept as &$lastTypes) { 
+    foreach ($lastTypes as &$lastData) { 
+        if (isset($lastData['details']) && is_array($lastData['details'])) {
+            usort($lastData['details'], function ($a, $b) {
+                $sizeA = (float)$a['size'];
+                $sizeB = (float)$b['size'];
+
+                if ($sizeA == $sizeB) {
+                    return 0;
+                }
+                return ($sizeA < $sizeB) ? -1 : 1;
+            });
+        }
+    }
+}
+unset($lastData); 
+unset($lastTypes);
 
 foreach ($phomTrongKho as $phom) {
     if (isset($phom['QtyInStock'])) {
