@@ -5,12 +5,14 @@ include_once __DIR__ . '/../configs/api.php';
 
 $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
 $companyName = isset($user['companyName']) ? $user['companyName'] : '';
-$response = json_decode(callAPI("layTatCaPhom", ["companyName" => $companyName]), true);
-$data = isset($response["data"]) ? $response["data"] : [];
+// API trả về một object, trong đó có key "data" chứa 2 mảng.
+$response = json_decode(callAPI("getBorrowPhomState", ["companyName" => $companyName]), true);
+// Lấy toàn bộ object `data` để Javascript có thể truy cập cả 2 mảng con
+$data = isset($response["data"]) ? $response["data"] : ["danhSachPhomTrongKho" => [], "danhSachDonMuon" => []];
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 
 <head>
     <meta charset="UTF-8">
@@ -84,13 +86,13 @@ $data = isset($response["data"]) ? $response["data"] : [];
                     <div class="row g-4">
                         <div class="col-md-6">
                             <div class="card p-3">
-                                <h5 class="text-center">Tổng tồn kho / Tổng đã mượn / Tổng nhập</h5>
+                                <h5 class="text-center">Tổng quan kho (tính theo đôi)</h5>
                                 <canvas id="chartInventory"></canvas>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="card p-3">
-                                <h5 class="text-center">Tồn kho theo mã phom</h5>
+                                <h5 class="text-center">Tỷ lệ tồn kho theo mã phom</h5>
                                 <canvas id="chartByLastNo"></canvas>
                             </div>
                         </div>
@@ -102,7 +104,7 @@ $data = isset($response["data"]) ? $response["data"] : [];
                         </div>
                         <div class="col-md-6">
                             <div class="card p-3">
-                                <h5 class="text-center">Thống kê size theo mã phom</h5>
+                                <h5 class="text-center">Thống kê tồn kho theo mã phom và size</h5>
                                 <canvas id="chartBySizeByLastNo"></canvas>
                             </div>
                         </div>
@@ -113,16 +115,14 @@ $data = isset($response["data"]) ? $response["data"] : [];
     </div>
 
     <script>
-        const phomData = <?php echo json_encode($data); ?>;
+        // Dữ liệu từ API giờ là một object chứa 2 mảng
+        const apiData = <?php echo json_encode($data); ?>;
+        const phomData = apiData.danhSachPhomTrongKho || [];
 
-        // Định nghĩa các mảng màu dễ nhìn hơn, sử dụng các tông màu sáng và đa dạng
-        const vibrantColors1 = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#E7E9ED']; // Đỏ, Xanh dương, Vàng, Xanh ngọc, Tím, Cam...
-        const vibrantColors2 = ['#4BC0C0', '#FFCE56', '#FF6384', '#36A2EB', '#C9CBCF', '#9966FF', '#FF9F40', '#E7E9ED']; // Xanh ngọc, Vàng, Đỏ, Xanh dương...
-        const vibrantColors3 = ['#36A2EB', '#FFCE56', '#FF6384', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#E7E9ED']; // Xanh dương, Vàng, Đỏ, Xanh ngọc...
-        const vibrantColors4 = ['#FFCE56', '#FF6384', '#36A2EB', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#E7E9ED']; // Vàng, Đỏ, Xanh dương, Xanh ngọc...
+        const vibrantColors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#E7E9ED', '#6F4E37', '#B87333', '#800000', '#008080'];
 
-        function getChartColors(colorSet, index) {
-            return colorSet[index % colorSet.length];
+        function getChartColors(index) {
+            return vibrantColors[index % vibrantColors.length];
         }
 
         function updateFilterOptions() {
@@ -151,7 +151,8 @@ $data = isset($response["data"]) ? $response["data"] : [];
                 const select = document.createElement('select');
                 select.className = 'form-select';
                 select.id = 'filterValue';
-                const years = Array.from(new Set(phomData.map(item => new Date(item.DateIn).getFullYear()))).sort((a, b) => b - a);
+                // Lấy danh sách năm từ dữ liệu có ngày nhập (DateIn)
+                const years = Array.from(new Set(phomData.filter(item => item.DateIn).map(item => new Date(item.DateIn).getFullYear()))).sort((a, b) => b - a);
                 years.forEach(year => {
                     select.innerHTML += `<option value="${year}">${year}</option>`;
                 });
@@ -166,10 +167,14 @@ $data = isset($response["data"]) ? $response["data"] : [];
         function filterData() {
             const type = document.getElementById('filterType').value;
             const valueEl = document.getElementById('filterValue');
-            if (type === 'all' || !valueEl) return phomData;
+            
+            if (type === 'all' || !valueEl) {
+                return phomData; // Trả về toàn bộ dữ liệu nếu chọn "Tất cả"
+            }
 
             const value = valueEl.value;
             return phomData.filter(item => {
+                if (!item.DateIn) return false; // Chỉ lọc các item có ngày nhập kho
                 const d = new Date(item.DateIn);
                 if (type === 'month') return d.getMonth() + 1 == value;
                 if (type === 'quarter') return Math.floor(d.getMonth() / 3) + 1 == value;
@@ -179,10 +184,12 @@ $data = isset($response["data"]) ? $response["data"] : [];
         }
 
         function renderCharts(data) {
+            // Hủy các biểu đồ cũ trước khi vẽ lại
             Chart.helpers.each(Chart.instances, function(instance) {
                 instance.destroy();
             });
 
+            // Khởi tạo các biến tổng hợp
             let totalInStock = 0;
             let totalPairsEntered = 0;
             const byLastNo = {};
@@ -191,8 +198,9 @@ $data = isset($response["data"]) ? $response["data"] : [];
             const allSizesSet = new Set();
 
             data.forEach(item => {
-                const pairsInStock = parseInt(item.QtyInStock || 0);
-                const totalPairsForEntry = parseInt(item.TotalPairs || 0);
+                // Thay đổi: Dùng parseFloat và tên trường mới (QtyInStock_Pairs, TotalPairs)
+                const pairsInStock = parseFloat(item.QtyInStock_Pairs || 0);
+                const totalPairsForEntry = parseFloat(item.TotalPairs || 0);
 
                 totalInStock += pairsInStock;
                 totalPairsEntered += totalPairsForEntry;
@@ -200,21 +208,25 @@ $data = isset($response["data"]) ? $response["data"] : [];
                 const lastNo = item.LastNo?.trim() || 'Không xác định';
                 const size = item.LastSize?.trim() || 'Không xác định';
 
+                // Tồn kho theo mã phom
                 byLastNo[lastNo] = (byLastNo[lastNo] || 0) + pairsInStock;
-
+                
+                // Tính số lượng đã mượn: Tổng nhập - Tồn kho
                 const borrowedForEntry = totalPairsForEntry - pairsInStock;
+
+                // Thống kê đã mượn theo mã phom và size
                 if (!borrowedByPhomSize[lastNo]) {
                     borrowedByPhomSize[lastNo] = {};
                 }
                 borrowedByPhomSize[lastNo][size] = (borrowedByPhomSize[lastNo][size] || 0) + borrowedForEntry;
                 allSizesSet.add(size);
-
+                
+                // Thống kê tồn kho theo mã phom và size
                 if (!sizeByLastNo[lastNo]) sizeByLastNo[lastNo] = {};
                 sizeByLastNo[lastNo][size] = (sizeByLastNo[lastNo][size] || 0) + pairsInStock;
             });
 
             const totalBorrowed = totalPairsEntered - totalInStock;
-
 
             // Chart 1: Tổng tồn kho / Tổng đã mượn / Tổng nhập
             new Chart('chartInventory', {
@@ -224,29 +236,20 @@ $data = isset($response["data"]) ? $response["data"] : [];
                     datasets: [{
                         label: 'Số lượng (đôi)',
                         data: [totalInStock, totalBorrowed, totalPairsEntered],
-                        backgroundColor: ['#3498DB', '#E74C3C', '#2ECC71'], // Xanh dương, Đỏ, Xanh lá cây
+                        backgroundColor: ['#36A2EB', '#FF6384', '#4BC0C0'],
                     }]
                 },
                 options: {
                     responsive: true,
                     plugins: {
-                        title: {
-                            display: true,
-                            text: 'Tổng tồn kho / Tổng đã mượn / Tổng nhập kho (theo đôi)'
-                        },
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Số lượng (đôi)'
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.label}: ${context.raw.toFixed(1)} đôi`
                             }
                         }
-                    }
+                    },
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Số lượng (đôi)' } } }
                 }
             });
 
@@ -259,16 +262,13 @@ $data = isset($response["data"]) ? $response["data"] : [];
                     labels: labelsByLastNo,
                     datasets: [{
                         data: dataByLastNo,
-                        backgroundColor: labelsByLastNo.map((_, i) => getChartColors(vibrantColors1, i))
+                        backgroundColor: labelsByLastNo.map((_, i) => getChartColors(i))
                     }]
                 },
                 options: {
                     responsive: true,
                     plugins: {
-                        title: {
-                            display: true,
-                            text: 'Tồn kho theo mã phom (số đôi)'
-                        },
+                        legend: { position: 'right' },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -277,7 +277,9 @@ $data = isset($response["data"]) ? $response["data"] : [];
                                         label += ': ';
                                     }
                                     if (context.parsed !== null) {
-                                        label += context.parsed + ' đôi (' + (context.parsed / dataByLastNo.reduce((a, b) => a + b, 0) * 100).toFixed(1) + '%)';
+                                        const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? (context.parsed / total * 100).toFixed(1) : 0;
+                                        label += `${context.parsed.toFixed(1)} đôi (${percentage}%)`;
                                     }
                                     return label;
                                 }
@@ -286,100 +288,51 @@ $data = isset($response["data"]) ? $response["data"] : [];
                     }
                 }
             });
-
-            // --- Thống kê đã mượn theo mã phom và size (Grouped Bar Chart) ---
+            
+            // Sắp xếp các size để hiển thị trên trục X một cách hợp lý
             const allSizesSorted = [...allSizesSet].sort((a, b) => {
                 const numA = parseFloat(a);
                 const numB = parseFloat(b);
-                if (!isNaN(numA) && !isNaN(numB)) {
-                    return numA - numB;
-                }
+                if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
                 return a.localeCompare(b);
             });
-
-            const borrowedSizeDatasets = Object.entries(borrowedByPhomSize).map(([lastNo, sizes], i) => {
-                return {
-                    label: lastNo,
-                    data: allSizesSorted.map(size => sizes[size] || 0),
-                    backgroundColor: getChartColors(vibrantColors2, i),
-                };
-            });
+            
+            // Chart 3: Thống kê đã mượn theo mã phom và size (Grouped Bar Chart)
+            const borrowedSizeDatasets = Object.entries(borrowedByPhomSize).map(([lastNo, sizes], i) => ({
+                label: lastNo,
+                data: allSizesSorted.map(size => sizes[size] || 0),
+                backgroundColor: getChartColors(i),
+            }));
 
             new Chart('chartByBorrowedPhomSize', {
                 type: 'bar',
-                data: {
-                    labels: allSizesSorted,
-                    datasets: borrowedSizeDatasets
-                },
+                data: { labels: allSizesSorted, datasets: borrowedSizeDatasets },
                 options: {
                     responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Thống kê đã mượn theo mã phom và size (số đôi)'
-                        },
-                        legend: {
-                            position: 'top'
-                        }
-                    },
+                    plugins: { legend: { position: 'top' } },
                     scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Size'
-                            }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Số lượng đã mượn (đôi)'
-                            }
-                        }
+                        x: { stacked: false, title: { display: true, text: 'Size' } },
+                        y: { stacked: false, beginAtZero: true, title: { display: true, text: 'Số lượng đã mượn (đôi)' } }
                     }
                 }
             });
 
             // Chart 4: Thống kê tồn kho theo mã phom và size (Grouped Bar Chart)
-            const stockSizeDatasets = Object.entries(sizeByLastNo).map(([lastNo, sizes], i) => {
-                return {
-                    label: lastNo,
-                    data: allSizesSorted.map(size => sizes[size] || 0),
-                    backgroundColor: getChartColors(vibrantColors3, i),
-                };
-            });
+            const stockSizeDatasets = Object.entries(sizeByLastNo).map(([lastNo, sizes], i) => ({
+                label: lastNo,
+                data: allSizesSorted.map(size => sizes[size] || 0),
+                backgroundColor: getChartColors(i + 1), // Dùng màu khác để phân biệt
+            }));
 
             new Chart('chartBySizeByLastNo', {
                 type: 'bar',
-                data: {
-                    labels: allSizesSorted,
-                    datasets: stockSizeDatasets
-                },
+                data: { labels: allSizesSorted, datasets: stockSizeDatasets },
                 options: {
                     responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Thống kê tồn kho theo mã phom và size (số đôi)'
-                        },
-                        legend: {
-                            position: 'top'
-                        }
-                    },
+                    plugins: { legend: { position: 'top' } },
                     scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Size'
-                            }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Số lượng (đôi)'
-                            }
-                        }
+                        x: { stacked: false, title: { display: true, text: 'Size' } },
+                        y: { stacked: false, beginAtZero: true, title: { display: true, text: 'Số lượng tồn kho (đôi)' } }
                     }
                 }
             });
@@ -387,12 +340,16 @@ $data = isset($response["data"]) ? $response["data"] : [];
 
         document.addEventListener("DOMContentLoaded", () => {
             updateFilterOptions();
-            renderCharts(phomData);
+            renderCharts(phomData); // Render lần đầu với toàn bộ dữ liệu
         });
 
+        // Lắng nghe sự kiện thay đổi trên các bộ lọc
         document.addEventListener("change", e => {
             if (['filterType', 'filterValue'].includes(e.target.id)) {
-                if (e.target.id === 'filterType') updateFilterOptions();
+                if (e.target.id === 'filterType') {
+                    updateFilterOptions();
+                }
+                // Dùng setTimeout để đảm bảo DOM đã cập nhật (đặc biệt khi đổi filterType)
                 setTimeout(() => {
                     const filtered = filterData();
                     renderCharts(filtered);

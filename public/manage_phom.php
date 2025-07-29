@@ -33,6 +33,21 @@ foreach ($data as $phom) {
     $groupedData[$phom['LastNo']][] = $phom;
     $totalPairsSum += $phom['TotalPairs'];
 }
+
+/**
+ * Hàm định dạng số: chỉ hiển thị phần thập phân nếu nó khác 0.
+ * Ví dụ: 5.0 -> "5", 5.5 -> "5.5"
+ * @param float|int $number Số cần định dạng
+ * @return string Số đã được định dạng
+ */
+function formatNumberAuto($number) {
+    // Nếu số đó là số nguyên (không có phần dư)
+    if (fmod($number, 1) == 0) {
+        return number_format($number, 0); // Định dạng không có số thập phân
+    } else {
+        return number_format($number, 1); // Định dạng có 1 số thập phân
+    }
+}
 ?>
 
 
@@ -123,7 +138,7 @@ foreach ($data as $phom) {
                             </button>
                         </div>
                         <div class="fw-bold">
-                            Tổng số đôi: <?= number_format($totalPairsSum) ?>
+                            Tổng số đôi: <?= formatNumberAuto($totalPairsSum) ?>
                         </div>
                     </div>
 
@@ -150,7 +165,7 @@ foreach ($data as $phom) {
                                     <?php foreach ($items as $phom): ?>
                                         <?php
                                         $totalPairsByLastNo += $phom['TotalPairs'];
-                                        $totalStockByLastNo += $phom['QtyInStock'];
+                                        $totalStockByLastNo += $phom['QtyInStock_Pairs'];
                                         ?>
                                         <tr>
                                             <td><?= htmlspecialchars($phom["LastNo"]) ?></td>
@@ -158,20 +173,20 @@ foreach ($data as $phom) {
                                             <td><?= htmlspecialchars($phom["LastName"]) ?></td>
                                             <td><?= htmlspecialchars($phom["Material"]) ?></td>
                                             <td><?= htmlspecialchars($phom["LastType"]) ?></td>
-                                            <td><?= $phom["TotalPairs"] ?></td>
-                                            <td><?= $phom["QtyInStock"] ?></td>
-                                            <td><?= $phom["TotalPairs"] - $phom["QtyInStock"] ?></td>
+                                            <td><?= formatNumberAuto($phom["TotalPairs"]) ?></td>
+                                            <td><?= formatNumberAuto($phom["QtyInStock_Pairs"]) ?></td>
+                                            <td><?= formatNumberAuto($phom["TotalPairs"] - $phom["QtyInStock_Pairs"]) ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                     <tr style="background-color: #AFECD1FF; font-weight: bold;">
                                         <td><?= htmlspecialchars($lastNo) ?></td>
                                         <td>Tất cả size</td>
-                                        <td><?= htmlspecialchars($phom["LastName"]) ?></td>
-                                        <td><?= htmlspecialchars($phom["Material"]) ?></td>
-                                        <td><?= htmlspecialchars($phom["LastType"]) ?></td>
-                                        <td><?= $totalPairsByLastNo ?></td>
-                                        <td><?= $totalStockByLastNo ?></td>
-                                        <td><?= $totalPairsByLastNo - $totalStockByLastNo ?></td>
+                                        <td><?= htmlspecialchars(isset($items[0]["LastName"]) ? $items[0]["LastName"] : '') ?></td>
+                                        <td><?= htmlspecialchars(isset($items[0]["Material"]) ? $items[0]["Material"] : '') ?></td>
+                                        <td><?= htmlspecialchars(isset($items[0]["LastType"]) ? $items[0]["LastType"] : '') ?></td>
+                                        <td><?= formatNumberAuto($totalPairsByLastNo) ?></td>
+                                        <td><?= formatNumberAuto($totalStockByLastNo) ?></td>
+                                        <td><?= formatNumberAuto($totalPairsByLastNo - $totalStockByLastNo) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                                 <tr id="noResultsRow" style="display: none;">
