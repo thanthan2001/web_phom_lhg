@@ -4,11 +4,14 @@ include_once __DIR__ . '/modals/login_modal.php';
 
 $user = isset($_SESSION['user']) ? $_SESSION['user'] : null;
 $companyName = isset($user['companyName']) ? $user['companyName'] : '';
-function formatQuantity($quantity) {
-    if (fmod($quantity, 1) !== 0.0) { 
-        return number_format($quantity, 1); 
+function formatQuantity($quantity)
+{
+    // Chuyển đổi sang float để kiểm tra chính xác
+    $quantity = (float)$quantity;
+    if (fmod($quantity, 1) !== 0.0) {
+        return number_format($quantity, 1);
     } else {
-        return number_format($quantity, 0); 
+        return number_format($quantity, 0);
     }
 }
 ?>
@@ -20,12 +23,11 @@ function formatQuantity($quantity) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý đơn mượn</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
     <style>
+        /* CSS của bạn giữ nguyên */
         .item-box {
             border: 1px solid #ddd;
             border-radius: 8px;
@@ -171,7 +173,6 @@ function formatQuantity($quantity) {
             cursor: pointer;
             display: flex;
             align-items: center;
-            /* z-index: 1000; */
             gap: 5px;
             padding: 5px 10px;
             font-weight: 500;
@@ -184,6 +185,11 @@ function formatQuantity($quantity) {
             color: gray;
             cursor: default;
             font-weight: normal;
+        }
+
+        .confirm-btn.completed {
+            background-color: #d1ecf1;
+            color: #0c5460;
         }
 
         .lend-table tbody tr:hover {
@@ -221,16 +227,60 @@ function formatQuantity($quantity) {
                     echo "<div class='alert alert-danger'>Bạn cần đăng nhập để xem thông tin.</div>";
                     exit;
                 }
+
                 $responseJson = callAPI('layTatCaDonMuon', ['companyName' => $companyName]);
                 $response = json_decode($responseJson, true);
+
+                $returnResponseJson = callAPI('layTatCaDonTra', ['companyName' => $companyName]);
+                $returnResponse = json_decode($returnResponseJson, true);
+
+                // --- BƯỚC 1: Xử lý dữ liệu trả hàng chi tiết ---
+                $returnLookup = [];
+                if ($returnResponse['status'] === 'Success' && !empty($returnResponse['data'])) {
+                    foreach ($returnResponse['data'] as $returnItem) {
+                        $billId = $returnItem['ID_BILL'];
+                        // Tạo key duy nhất cho mỗi dòng sản phẩm (phom + size)
+                        $itemKey = $returnItem['LastName'] . '___' . trim($returnItem['LastSize']);
+
+                        if (!isset($returnLookup[$billId])) {
+                            $returnLookup[$billId] = [
+                                'total_borrowed' => 0,
+                                'total_returned' => 0,
+                                'items' => []
+                            ];
+                        }
+
+                        // Cộng dồn tổng số lượng
+                        $returnLookup[$billId]['total_borrowed'] += (float)$returnItem['QuantityBorrow'];
+                        $returnLookup[$billId]['total_returned'] += (float)$returnItem['QuantityReturn'];
+
+                        // Lưu chi tiết từng dòng
+                        $returnLookup[$billId]['items'][$itemKey] = [
+                            'borrowed' => (float)$returnItem['QuantityBorrow'],
+                            'returned' => (float)$returnItem['QuantityReturn']
+                        ];
+                    }
+                }
 
                 $bills = [];
                 if ($response['status'] === 'Success' && !empty($response['data'])) {
                     foreach ($response['data'] as $item) {
                         $billId = $item['ID_bill'];
 
-                        // Initialize bill data if not exists
                         if (!isset($bills[$billId])) {
+                            // --- BƯỚC 2: Gán thông tin trả hàng vào từng đơn mượn ---
+                            $returnInfo = isset($returnLookup[$billId]) ? $returnLookup[$billId] : null;
+                            $status = 'not_returned'; // Trạng thái mặc định
+
+                            if ($returnInfo) {
+                                // Sử dụng sai số để so sánh số thực
+                                if (abs($returnInfo['total_borrowed'] - $returnInfo['total_returned']) < 0.001) {
+                                    $status = 'completed'; // Đã hoàn thành
+                                } else {
+                                    $status = 'partial'; // Chưa trả đủ
+                                }
+                            }
+
                             $bills[$billId] = [
                                 'meta' => [
                                     'ID_bill' => $billId,
@@ -241,82 +291,108 @@ function formatQuantity($quantity) {
                                     'OfficerName' => $item['OfficerName'],
                                     'isConfirm' => $item['isConfirm'],
                                     'StateLastBill' => $item['StateLastBill'],
-                                    'ToTalPhomNotBinding' => (float)$item['ToTalPhomNotBinding'], // Take first value
-                                    'DateBorrow' => $item['DateBorrow'], // Initialize with current date
-                                    'DateReceive' => $item['DateReceive'], // Initialize with current date
+                                    'ToTalPhomNotBinding' => (float)$item['ToTalPhomNotBinding'],
+                                    'DateBorrow' => $item['DateBorrow'],
+                                    'DateReceive' => $item['DateReceive'],
+                                    'status' => $status,          // Trạng thái mới: not_returned, partial, completed
+                                    'returnInfo' => $returnInfo   // Dữ liệu trả hàng chi tiết
                                 ],
                                 'details' => []
                             ];
                         }
 
-                        // Update DateBorrow (earliest date)
                         if (strtotime($item['DateBorrow']) < strtotime($bills[$billId]['meta']['DateBorrow'])) {
                             $bills[$billId]['meta']['DateBorrow'] = $item['DateBorrow'];
                         }
-
-                        // Update DateReceive (latest date)
                         if (strtotime($item['DateReceive']) > strtotime($bills[$billId]['meta']['DateReceive'])) {
                             $bills[$billId]['meta']['DateReceive'] = $item['DateReceive'];
                         }
-
                         $bills[$billId]['details'][] = $item;
                     }
 
-                    // Sort bills based on isConfirm and DateBorrow
+                    // --- BƯỚC 3: Sắp xếp đơn hàng theo logic mới ---
                     usort($bills, function ($a, $b) {
-                        $a_confirm = !empty($a['meta']['isConfirm']);
-                        $b_confirm = !empty($b['meta']['isConfirm']);
+                        $statusOrder = [
+                            'not_returned_unconfirmed' => 1, // Chưa duyệt
+                            'not_returned_confirmed' => 2, // Đã duyệt
+                            'partial' => 3, // Chưa trả đủ
+                            'completed' => 4, // Đã hoàn thành
+                        ];
 
-                        // Prioritize unconfirmed bills
-                        if ($a_confirm !== $b_confirm) {
-                            return $a_confirm - $b_confirm;
+                        // Xác định key sắp xếp cho A
+                        $a_key = $a['meta']['status'];
+                        if ($a_key === 'not_returned') {
+                            $a_key = !empty($a['meta']['isConfirm']) ? 'not_returned_confirmed' : 'not_returned_unconfirmed';
+                        }
+                        // Xác định key sắp xếp cho B
+                        $b_key = $b['meta']['status'];
+                        if ($b_key === 'not_returned') {
+                            $b_key = !empty($b['meta']['isConfirm']) ? 'not_returned_confirmed' : 'not_returned_unconfirmed';
+                        }
+                        
+                        $a_prio = $statusOrder[$a_key];
+                        $b_prio = $statusOrder[$b_key];
+
+                        if ($a_prio !== $b_prio) {
+                            return $a_prio - $b_prio;
                         }
 
-                        // Sort by DateBorrow in descending order
+                        // Nếu cùng trạng thái, sắp xếp theo ngày mượn mới nhất
                         $a_date = strtotime($a['meta']['DateBorrow']);
                         $b_date = strtotime($b['meta']['DateBorrow']);
-
                         return $b_date - $a_date;
                     });
                 }
                 ?>
 
-                <?php if (empty($bills)): ?>
+                <?php if (empty($bills)) : ?>
                     <div class="alert alert-info text-center mt-4">
                         <i class="fas fa-box-open"></i> Chưa có đơn mượn.
                     </div>
                 <?php endif; ?>
 
-                <?php foreach ($bills as $group): ?>
+                <?php foreach ($bills as $group) : ?>
                     <?php
                     $meta = $group['meta'];
                     $details = $group['details'];
-                    if (!empty($meta['isConfirm']) && !empty($meta['StateLastBill'])) {
-                        // Đơn đã cho mượn
-                        $borderColor = '#0093D3';
-                        $backgroundColor = '#d0f0fd';
-                        $statusText = 'Đã cho mượn';
-                    } elseif (!empty($meta['isConfirm'])) {
-                        // Đơn đã xác nhận nhưng chưa scan
-                        $borderColor = '#14AE5C';
-                        $backgroundColor = '#d4edda';
-                        $statusText = 'Đã xác nhận';
-                    } else {
-                        // Đơn chưa xác nhận
-                        $borderColor = '#d9534f';
-                        $backgroundColor = '#F5CFCF';
-                        $statusText = 'Chưa xác nhận';
-                    }
-                    $cardStyle = "background-color: $backgroundColor; border: 1px solid $borderColor;";
+                    $status = $meta['status'];
 
+                    $buttonText = '';
+                    $buttonAttributes = 'disabled'; 
+                    $buttonClass = '';
+                    $borderColor = '';
+                    $backgroundColor = '';
+
+                    if ($status === 'completed') {
+                        $buttonText = 'Đã hoàn thành';
+                        $buttonClass = 'completed';
+                        $borderColor = '#17a2b8';
+                        $backgroundColor = '#d1ecf1';
+                    } elseif ($status === 'partial') {
+                        $buttonText = 'Chưa trả đủ';
+                        $buttonClass = 'partial';
+                        $borderColor = '#D2691E';
+                        $backgroundColor = '#FFEBD6';
+                    } elseif (!empty($meta['isConfirm'])) {
+                        $buttonText = 'Đã duyệt';
+                        $buttonClass = 'approved';
+                        $borderColor = '#28a745';
+                        $backgroundColor = '#d4edda';
+                    } else {
+                        $buttonText = 'Duyệt đơn';
+                        $buttonAttributes = 'title="Bấm duyệt đơn"'; 
+                        $buttonClass = 'to-approve';
+                        $borderColor = '#dc3545';
+                        $backgroundColor = '#f8d7da';
+                    }
+
+                    $cardStyle = "background-color: $backgroundColor; border: 1px solid $borderColor;";
                     ?>
-                    <div class="lend-card borrow-card" style="<?= $cardStyle ?>" data-content="<?= htmlspecialchars(strtolower($meta['ID_bill'] . ' ' . $meta['Userid'] . ' ' . $meta['BorrowerName'] . ' ' . $meta['DepName'] . ' ' . $meta['OfficerId'] . ' ' . $meta['OfficerName'] . ' ' . date('d/m/Y', strtotime($meta['DateBorrow'])) . ' ' . date('d/m/Y', strtotime($meta['DateReceive']))) ) ?>">
-                        <button
-                            class="confirm-btn"
-                            data-bill-id="<?= $meta['ID_bill'] ?>"
-                            <?= $meta['isConfirm'] ? 'disabled title="Đã duyệt"' : 'title="Bấm duyệt đơn"' ?>>
+                    <div class="lend-card borrow-card" style="<?= $cardStyle ?>" data-content="<?= htmlspecialchars(strtolower($meta['ID_bill'] . ' ' . $meta['Userid'] . ' ' . $meta['BorrowerName'] . ' ' . $meta['DepName'] . ' ' . $meta['OfficerId'] . ' ' . $meta['OfficerName'] . ' ' . date('d/m/Y', strtotime($meta['DateBorrow'])) . ' ' . date('d/m/Y', strtotime($meta['DateReceive'])))) ?>">
+                        
+                        <button class="confirm-btn <?= $buttonClass ?>" data-bill-id="<?= $meta['ID_bill'] ?>" <?= $buttonAttributes ?>>
                             <i class="fas fa-check-circle"></i>
-                            <?= $meta['isConfirm'] ? 'Đã duyệt' : 'Duyệt đơn' ?>
+                            <?= $buttonText ?>
                         </button>
 
                         <div class="info-grid">
@@ -350,15 +426,14 @@ function formatQuantity($quantity) {
                             <div><strong>SL ghi chú:</strong>
                                 <?= formatQuantity($meta['ToTalPhomNotBinding']) ?>
                             </div>
-                            <?php
-                            $isScanned = $meta['StateLastBill'];
-                            $statusText = $isScanned ? 'Đã scan' : 'Chưa scan';
-                            $statusColor = $isScanned ? '#28a745' : '#dc3545';
-                            ?>
                             <div>
-                                <strong>Trạng thái:</strong>
-                                <span style="color: <?= $statusColor ?>; font-weight: bold;">
-                                    <?= $statusText ?>
+                                <?php
+                                $scanStatusText = $meta['StateLastBill'] ? 'Đã scan' : 'Chưa scan';
+                                $scanStatusColor = $meta['StateLastBill'] ? '#28a745' : '#dc3545';
+                                ?>
+                                <strong>Scan:</strong>
+                                <span style="color: <?= $scanStatusColor ?>; font-weight: bold;">
+                                    <?= $scanStatusText ?>
                                 </span>
                             </div>
                         </div>
@@ -369,21 +444,48 @@ function formatQuantity($quantity) {
                                     <th>Mã dạng phom</th>
                                     <th>Tên Phom</th>
                                     <th>Size</th>
-                                    <th>Đã đăng ký</th>
-                                    <th>Đã quét</th>
+                                    <?php if ($status === 'partial' || $status === 'completed') : ?>
+                                        <th>Đã mượn</th>
+                                        <th>Đã trả</th>
+                                    <?php else : ?>
+                                        <th>Đã đăng ký</th>
+                                        <th>Đã quét</th>
+                                    <?php endif; ?>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($details as $detail): ?>
-                                    <?php $maDangPhom = explode('(', $detail['LastName'])[0]; ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars(trim($maDangPhom)) ?></td>
-                                        <td><?= htmlspecialchars($detail['LastName']) ?></td>
-                                        <td><?= trim($detail['LastSize']) ?></td>
-                                        <td><?= intval($detail['LastSum']) ?></td>
-                                        <td><?= intval($detail['TotalPairsScanned']) ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
+                                <?php
+                                if ($status === 'partial' || $status === 'completed') {
+                                    $returnItems = $meta['returnInfo']['items'];
+                                    foreach ($returnItems as $itemKey => $itemData) {
+
+                                        list($lastName, $lastSize) = explode('___', $itemKey);
+                                        $maDangPhom = explode('(', $lastName)[0];
+                                ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars(trim($maDangPhom)) ?></td>
+                                            <td><?= htmlspecialchars($lastName) ?></td>
+                                            <td><?= htmlspecialchars($lastSize) ?></td>
+                                            <td><?= formatQuantity($itemData['borrowed']) ?></td>
+                                            <td><?= formatQuantity($itemData['returned']) ?></td>
+                                        </tr>
+                                    <?php
+                                    }
+                                } else {
+                                    foreach ($details as $detail) {
+                                        $maDangPhom = explode('(', $detail['LastName'])[0];
+                                    ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars(trim($maDangPhom)) ?></td>
+                                            <td><?= htmlspecialchars($detail['LastName']) ?></td>
+                                            <td><?= trim($detail['LastSize']) ?></td>
+                                            <td><?= intval($detail['LastSum']) ?></td>
+                                            <td><?= intval($detail['TotalPairsScanned']) ?></td>
+                                        </tr>
+                                <?php
+                                    }
+                                }
+                                ?>
                             </tbody>
                         </table>
                     </div>
@@ -408,7 +510,7 @@ function formatQuantity($quantity) {
 
             function filterCards() {
                 const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
-                const dateValue = document.getElementById('dateInput').value; // dạng YYYY-mm-dd
+                const dateValue = document.getElementById('dateInput').value;
                 let visibleCount = 0;
 
                 const cards = document.querySelectorAll('.borrow-card');
@@ -421,14 +523,13 @@ function formatQuantity($quantity) {
                     }
 
                     if (dateValue) {
-                        const borrowDate = new Date(content.match(/\d{2}\/\d{2}\/\d{4}/)[0].split('/').reverse().join('-'));
-                        const selectedDate = new Date(dateValue);
-                        
-                        // Compare dates by converting them to YYYY-MM-DD strings to avoid time issues
-                        const borrowDateFormatted = borrowDate.toISOString().slice(0,10);
-                        const selectedDateFormatted = selectedDate.toISOString().slice(0,10);
-
-                        if (borrowDateFormatted !== selectedDateFormatted) {
+                        const contentDateMatch = content.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+                        if (contentDateMatch) {
+                            const borrowDateStr = `${contentDateMatch[3]}-${contentDateMatch[2]}-${contentDateMatch[1]}`;
+                            if (borrowDateStr !== dateValue) {
+                                match = false;
+                            }
+                        } else {
                             match = false;
                         }
                     }
@@ -442,9 +543,11 @@ function formatQuantity($quantity) {
 
             document.getElementById('searchInput').addEventListener('input', filterCards);
             document.getElementById('dateInput').addEventListener('change', filterCards);
-
+            
             document.querySelectorAll('.confirm-btn').forEach(button => {
                 button.addEventListener('click', async function() {
+                    if (this.disabled) return;
+
                     const billId = this.dataset.billId;
                     const companyName = <?= json_encode($_SESSION['user']['companyName']) ?>;
 
