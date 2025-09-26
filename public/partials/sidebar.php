@@ -1,11 +1,11 @@
 <!-- sidebar.php -->
 <style>
-  body {
+body {
     margin: 0;
     font-family: "Segoe UI", sans-serif;
-  }
+}
 
-  .sidebar {
+.sidebar {
     width: 260px;
     background-color: #0f172a;
     color: white;
@@ -14,13 +14,13 @@
     position: fixed;
     transition: width 0.3s ease;
     z-index: 1000;
-  }
+}
 
-  .sidebar.collapsed {
+.sidebar.collapsed {
     width: 80px;
-  }
+}
 
-  .sidebar .logo {
+.sidebar .logo {
     font-size: 1.2rem;
     font-weight: bold;
     padding: 0 20px;
@@ -29,18 +29,18 @@
     display: flex;
     align-items: center;
     gap: 10px;
-  }
+}
 
-  .sidebar ul {
+.sidebar ul {
     list-style: none;
     padding: 0;
-  }
+}
 
-  .sidebar li {
+.sidebar li {
     margin-bottom: 5px;
-  }
+}
 
-  .sidebar a {
+.sidebar a {
     color: #cbd5e1;
     text-decoration: none;
     padding: 12px 20px;
@@ -49,29 +49,29 @@
     gap: 15px;
     border-left: 4px solid transparent;
     transition: background 0.2s, color 0.2s;
-  }
+}
 
-  .sidebar a:hover {
+.sidebar a:hover {
     background-color: #1e293b;
     color: white;
-  }
+}
 
-  .sidebar a.active {
+.sidebar a.active {
     background-color: #1e40af;
     border-left: 4px solid #53EDF5;
     color: white;
     font-weight: 500;
-  }
+}
 
-  .sidebar.collapsed a span {
+.sidebar.collapsed a span {
     display: none;
-  }
+}
 
-  .sidebar.collapsed .logo span {
+.sidebar.collapsed .logo span {
     display: none;
-  }
+}
 
-  .toggle-btn {
+.toggle-btn {
     background-color: #53EDF5;
     border: none;
     color: white;
@@ -84,23 +84,23 @@
     font-size: 16px;
     cursor: pointer;
     transition: transform 0.3s;
-  }
+}
 
-  .sidebar.collapsed .toggle-btn i {
+.sidebar.collapsed .toggle-btn i {
     transform: rotate(180deg);
-  }
+}
 
-  .content {
+.content {
     margin-left: 260px;
     transition: margin-left 0.3s;
     padding: 20px;
-  }
+}
 
-  .sidebar.collapsed ~ .content {
+.sidebar.collapsed~.content {
     margin-left: 80px;
-  }
+}
 
-  .sidebar i {
+.sidebar i {
     font-size: 24px;
 }
 </style>
@@ -111,48 +111,53 @@ $adminUserIDs = include '../configs/admins.php';
 ?>
 
 <div class="sidebar" id="sidebar">
-  <button class="toggle-btn" onclick="toggleSidebar()">
-    <i class="fas fa-angle-left"></i>
-  </button>
-  <div class="logo"><i class="fas fa-shoe-prints"></i><span>Phom System</span></div>
-  <ul>
-    <?php if (in_array($userID, $adminUserIDs)): ?>
-    <li><a href="index.php" data-page="Trang chủ"><i class="fas fa-home"></i> <span>Trang chủ</span></a></li>
-    <li><a href="manage_borrow.php" data-page="Quản lý đơn mượn"><i class="fas fa-tasks"></i> <span>Quản lý đơn mượn</span></a></li>
-    <li><a href="manage_return.php" data-page="Quản lý đơn trả"><i class="fas fa-undo-alt"></i> <span>Quản lý đơn trả</span></a></li>
-    <li><a href="manage_phom.php" data-page="Quản lý phom"><i class="fas fa-shoe-prints"></i> <span>Quản lý phom</span></a></li>
-    <li><a href="manage_borrow_phom_state.php" data-page="Quản lý trạng thái mượn phom"><i class="fas fa-cogs"></i> <span>Quản lý trạng thái mượn phom</span></a></li>
-  <?php else: ?>
-    <li><a href="lend_register.php" data-page="Đăng ký mượn"><i class="fas fa-hand-holding"></i> <span>Đăng ký mượn</span></a></li>
-    <li><a href="history_register.php" data-page="Lịch sử mượn"><i class="fas fa-file-alt"></i> <span>Lịch sử mượn trả</span></a></li>
-    <!-- <li><a href="trans_form.php" data-page="Chuyển phom"><i class="fas fa-exchange-alt"></i> <span>Chuyển phom</span></a></li> -->
-  <?php endif; ?>
-  </ul>
+    <button class="toggle-btn" onclick="toggleSidebar()">
+        <i class="fas fa-angle-left"></i>
+    </button>
+    <div class="logo"><i class="fas fa-shoe-prints"></i><span>Phom System</span></div>
+    <ul>
+        <?php if (in_array($userID, $adminUserIDs)): ?>
+        <li><a href="index.php" data-page="Trang chủ"><i class="fas fa-home"></i> <span>Trang chủ</span></a></li>
+        <li><a href="manage_borrow.php" data-page="Quản lý đơn mượn"><i class="fas fa-tasks"></i> <span>Quản lý đơn
+                    mượn</span></a></li>
+        <!-- <li><a href="manage_return.php" data-page="Quản lý đơn trả"><i class="fas fa-undo-alt"></i> <span>Quản lý đơn trả</span></a></li> -->
+        <li><a href="manage_phom.php" data-page="Quản lý phom"><i class="fas fa-shoe-prints"></i> <span>Quản lý
+                    phom</span></a></li>
+        <li><a href="manage_borrow_phom_state.php" data-page="Quản lý trạng thái mượn phom"><i class="fas fa-cogs"></i>
+                <span>Quản lý trạng thái mượn phom</span></a></li>
+        <?php else: ?>
+        <li><a href="lend_register.php" data-page="Đăng ký mượn"><i class="fas fa-hand-holding"></i> <span>Đăng ký
+                    mượn</span></a></li>
+        <li><a href="history_register.php" data-page="Lịch sử mượn"><i class="fas fa-file-alt"></i> <span>Lịch sử mượn
+                    trả</span></a></li>
+        <!-- <li><a href="trans_form.php" data-page="Chuyển phom"><i class="fas fa-exchange-alt"></i> <span>Chuyển phom</span></a></li> -->
+        <?php endif; ?>
+    </ul>
 </div>
 
 <script>
-  const sidebar = document.getElementById('sidebar');
-  
-  function toggleSidebar() {
+const sidebar = document.getElementById('sidebar');
+
+function toggleSidebar() {
     sidebar.classList.toggle('collapsed');
     document.body.classList.toggle('sidebar-collapsed');
     localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
-  }
+}
 
-  function setActiveLink() {
+function setActiveLink() {
     const currentUrl = window.location.pathname.split('/').pop();
     const links = document.querySelectorAll('.sidebar a');
     links.forEach(link => {
-      if (link.getAttribute('href') === currentUrl) {
-        link.classList.add('active');
-        localStorage.setItem('currentPageTitle', link.getAttribute('data-page'));
-      } else {
-        link.classList.remove('active');
-      }
+        if (link.getAttribute('href') === currentUrl) {
+            link.classList.add('active');
+            localStorage.setItem('currentPageTitle', link.getAttribute('data-page'));
+        } else {
+            link.classList.remove('active');
+        }
     });
-  }
+}
 
-  window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', () => {
     const sidebarCollapsed = localStorage.getItem('sidebarCollapsed');
 
     // Nếu chưa có giá trị, mặc định collapsed là true (tức sidebar đóng)
@@ -170,5 +175,4 @@ $adminUserIDs = include '../configs/admins.php';
 
     setActiveLink(); // vẫn giữ lại highlight menu
 });
-
 </script>
